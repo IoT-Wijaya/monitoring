@@ -16,34 +16,36 @@ class MqttSubscribe extends Command
         $mqtt = MQTT::connection();
         $this->info("Terhubung ke broker MQTT...");
 
-        // Subscribe ke semua topik yang diawali pabrik/veneer/
         $mqtt->subscribe('pabrik/veneer/#', function (string $topic, string $message) {
-
-            // 1. UPDATE TIMESTAMP SETIAP PESAN APAPUN MASUK
             cache()->put('veneer_last_seen', now()->timestamp);
-
-            // 2. TAMPILKAN LOG DI TERMINAL
             $this->info("[MQTT IN] Topik: {$topic} | Pesan: {$message}");
 
-            // 3. PROSES DATA KECEPATAN / SINYAL
             if (str_ends_with($topic, 'kecepatan')) {
                 cache()->put('veneer_kecepatan', (int) $message);
             }
-
-            // 4. PROSES DATA SSID WIFI (TAMBAHAN)
             if (str_ends_with($topic, 'ssid')) {
                 cache()->put('veneer_ssid', $message);
             }
 
-            // 5. PROSES DATA JUMLAH
-            if (str_ends_with($topic, 'jumlah')) {
-                $jumlah = (int) $message;
-                VeneerLog::create([
-                    'jumlah' => $jumlah,
-                    'kecepatan_mbps' => (int) cache()->get('veneer_kecepatan', 0),
-                    'created_at' => now(),
-                ]);
+            if ($topic === 'pabrik/veneer/jumlah') {
+                cache()->put('veneer_jumlah_s1', (int) $message);
             }
+            if ($topic === 'pabrik/veneer/jumlah2') {
+                cache()->put('veneer_jumlah_s2', (int) $message);
+            }
+
+            $jumlah1 = cache()->get('veneer_jumlah_s1', 0);
+            $jumlah2 = cache()->get('veneer_jumlah_s2', 0);
+            $kecepatan = cache()->get('veneer_kecepatan', 0);
+
+            VeneerLog::updateOrCreate(
+                ['created_at' => today()],
+                [
+                    'jumlah' => $jumlah1,
+                    'jumlah2' => $jumlah2,
+                    'kecepatan_mbps' => $kecepatan,
+                ]
+            );
         });
 
         $mqtt->loop();
