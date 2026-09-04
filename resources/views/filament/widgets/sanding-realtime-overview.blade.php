@@ -46,7 +46,12 @@
             <div class="mt-2 mb-5 grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
                 <!-- Sensor 1 -->
                 <div>
-                    <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Sensor 1</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Sensor 1</span>
+                        @if($sensor1Error)
+                        <span class="px-1.5 py-0.5 text-[9px] font-bold bg-red-500 text-white rounded animate-pulse">ERROR</span>
+                        @endif
+                    </div>
                     <div class="flex items-baseline gap-1.5 mt-0.5">
                         <span class="text-3xl font-black font-mono text-gray-900 dark:text-white tracking-tight">
                             {{ number_format($totalSanding) }}
@@ -58,7 +63,12 @@
 
                 <!-- Sensor 2 -->
                 <div class="sm:border-l sm:border-gray-200 dark:sm:border-gray-700 sm:pl-4">
-                    <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Sensor 2</span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Sensor 2</span>
+                        @if($sensor2Error)
+                        <span class="px-1.5 py-0.5 text-[9px] font-bold bg-red-500 text-white rounded animate-pulse">ERROR</span>
+                        @endif
+                    </div>
                     <div class="flex items-baseline gap-1.5 mt-0.5">
                         <span class="text-3xl font-black font-mono text-gray-900 dark:text-white tracking-tight">
                             {{ number_format($totalSanding2) }}
