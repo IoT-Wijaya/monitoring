@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\SandingRealtimeOverview;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -18,6 +19,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Joaopaulolndev\FilamentEditProfile\FilamentEditProfilePlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -29,6 +31,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
+            ->profile(isSimple: false)
             ->colors([
                 'primary' => Color::Amber,
             ])
@@ -41,6 +44,7 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 AccountWidget::class,
                 FilamentInfoWidget::class,
+                SandingRealtimeOverview::class,
             ])
             ->middleware([
                 EncryptCookies::class,

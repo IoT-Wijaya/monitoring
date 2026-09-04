@@ -30,7 +30,12 @@ class MqttSubscribe extends Command
                 cache()->put('veneer_kecepatan', (int) $message);
             }
 
-            // 4. PROSES DATA JUMLAH
+            // 4. PROSES DATA SSID WIFI (TAMBAHAN)
+            if (str_ends_with($topic, 'ssid')) {
+                cache()->put('veneer_ssid', $message);
+            }
+
+            // 5. PROSES DATA JUMLAH
             if (str_ends_with($topic, 'jumlah')) {
                 $jumlah = (int) $message;
                 VeneerLog::create([

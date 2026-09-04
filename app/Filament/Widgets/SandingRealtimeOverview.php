@@ -4,6 +4,8 @@ namespace App\Filament\Widgets;
 
 use App\Models\VeneerLog;
 use Filament\Widgets\Widget;
+use Filament\Notifications\Notification;
+use PhpMqtt\Client\Facades\MQTT;
 
 class SandingRealtimeOverview extends Widget
 {
@@ -12,6 +14,7 @@ class SandingRealtimeOverview extends Widget
     public int $totalSanding = 0;
     public string $statusMesin = 'OFFLINE';
     public int $kecepatanSinyal = 0;
+    public string $wifiSSID = '-'; // Variabel untuk Nama SSID
 
     protected static ?string $pollingInterval = '2s';
 
@@ -22,21 +25,40 @@ class SandingRealtimeOverview extends Widget
 
     public function updateData(): void
     {
-        // 1. Ambil data hitungan terbaru dari MySQL
         $latestLog = VeneerLog::latest()->first();
         $this->totalSanding = $latestLog ? $latestLog->jumlah : 0;
 
-        // 2. Ambil data kecepatan sinyal dari cache
-        $this->kecepatanSinyal = (int) cache()->get('veneer_kecepatan', 0);
-
-        // 3. Pengecekan Status ONLINE / OFFLINE
         $lastSeen = cache()->get('veneer_last_seen');
 
-        // Jika ada data masuk dalam 15 detik terakhir -> ONLINE
         if ($lastSeen && (time() - $lastSeen) <= 15) {
             $this->statusMesin = 'ONLINE';
+            $this->kecepatanSinyal = (int) cache()->get('veneer_kecepatan', 0);
+            $this->wifiSSID = cache()->get('veneer_ssid', 'Unknown WiFi'); // Ambil SSID dari cache
         } else {
             $this->statusMesin = 'OFFLINE';
+            $this->kecepatanSinyal = 0;
+            $this->wifiSSID = 'Disconnected';
+        }
+    }
+
+    public function resetCounter(): void
+    {
+        try {
+            $mqtt = MQTT::connection();
+            $mqtt->publish('pabrik/veneer/perintah', 'RESET', 0);
+            $mqtt->disconnect();
+
+            Notification::make()
+                ->title('Perintah Reset Terkirim')
+                ->success()
+                ->body('ESP32 akan mereset hitungan ke 0.')
+                ->send();
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Gagal Mengirim Perintah')
+                ->danger()
+                ->body($e->getMessage())
+                ->send();
         }
     }
 }

@@ -1,0 +1,84 @@
+version: "3.8"
+
+services:
+    app:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        image: laravel-custom-app
+        container_name: monitoring_app
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+
+        environment:
+            - APP_ENV=production
+            - APP_DEBUG=false
+            - DB_CONNECTION=mysql
+            - DB_HOST=mysql
+            - DB_PORT=3306
+            - DB_DATABASE=wijayapl_monitoring
+            - DB_USERNAME=wijayapl_monitoring
+            - DB_PASSWORD=monitoring_wijaya21
+        networks:
+            - laravel
+        depends_on:
+            - mysql
+
+    # Worker otomatis untuk MQTT Listener
+    mqtt-worker:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        image: laravel-custom-app
+        container_name: monitoring_mqtt_worker
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+        command: php artisan mqtt:subscribe
+        networks:
+            - laravel
+        depends_on:
+            - app
+            - mysql
+
+    # Web Server Nginx (Opsional jika ingin langsung mirip produksi)
+    # Atau Anda bisa menggunakan built-in server PHP untuk local: php artisan serve
+    nginx:
+        image: nginx:alpine
+        container_name: monitoring_nginx
+        restart: unless-stopped
+        ports:
+            - "80:80"
+        volumes:
+            - ./:/var/www/html
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        networks:
+            - laravel
+        depends_on:
+            - app
+
+    mysql:
+        image: mariadb:latest
+        container_name: monitoring_db
+        restart: unless-stopped
+        environment:
+            MARIADB_DATABASE: wijayapl_monitoring
+            MARIADB_ROOT_PASSWORD: monitoring_wijaya21
+            MARIADB_USER: wijayapl_monitoring
+            MARIADB_PASSWORD: monitoring_wijaya21
+        ports:
+            - "3306:3306"
+        volumes:
+            - mysql_data:/var/lib/mysql
+        networks:
+            - laravel
+
+networks:
+    laravel:
+        driver: bridge
+
+volumes:
+    mysql_data:
