@@ -11,9 +11,14 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libpq-dev \
     libicu-dev \
-    libzip-dev
+    libzip-dev \
+    gnupg
 
-# Clear cache
+# Install Node.js (Versi LTS terbaru via NodeSource) & npm
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - \
+    && apt-get install -y nodejs
+
+# Clear cache apt untuk memperkecil ukuran image
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install ekstensi PHP (termasuk intl dan zip)
