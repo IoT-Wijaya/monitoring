@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+    Options +FollowSymLinks
+    RewriteEngine On
+
+    # Jangan lakukan rewrite jika request sudah mengarah ke folder public/
+    RewriteCond %{REQUEST_URI} !^/public/
+
+    # Jika file atau direktori fisik tidak ditemukan, teruskan ke public/
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+
+    # Alihkan semua request selain public ke dalam folder public/
+    RewriteRule ^(.*)$ public/$1 [L]
+
+    # Alihkan root URL (/) langsung ke public/index.php
+    RewriteRule ^$ public/index.php [L]
+</IfModule>
