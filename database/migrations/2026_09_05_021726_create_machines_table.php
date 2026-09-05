@@ -11,11 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('veneer_logs', function (Blueprint $table) {
+        Schema::create('machines', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('jumlah');
-            $table->integer('kecepatan_mbps')->nullable();
-            $table->string('status_sinyal')->nullable();
+            $table->string('nama');                 // "Mesin Sanding", "Mesin Cutting CNC", dst
+            $table->string('kode_esp32')->unique();  // "ESP32-Sanding" -> dipakai device utk auth/identifikasi
+            $table->string('slug')->unique();        // "mesin-sanding" -> aman dipakai di URL/route
             $table->timestamps();
         });
     }
@@ -25,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('veneer_logs');
+        Schema::dropIfExists('machines');
     }
 };
