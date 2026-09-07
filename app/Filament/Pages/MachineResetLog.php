@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\MachineResetLog as MachineResetLogModel;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -11,11 +12,12 @@ use UnitEnum;
 
 class MachineResetLog extends Page
 {
+    use HasPageShield;
     protected static ?string $navigationLabel = 'Log Reset';
     protected static ?string $title = 'Machine Reset Logs';
     protected static BackedEnum|string|null $navigationIcon = 'heroicon-o-clipboard-document-list';
     protected static UnitEnum|string|null $navigationGroup = 'Riwayat';
-
+    protected static ?int $navigationSort = 2;
     protected string $view = 'filament.pages.machine-reset-log';
 
     public function getMaxContentWidth(): Width|string|null
