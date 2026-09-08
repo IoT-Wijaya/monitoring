@@ -1,0 +1,122 @@
+name: Deploy to VPS (Monitoring IoT)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mariadb:latest
+        env:
+          MARIADB_DATABASE: testing
+          MARIADB_ROOT_PASSWORD: testing_root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, pdo, pdo_mysql, bcmath, intl, gd, zip, pcntl
+          coverage: none
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Copy .env
+        run: cp .env.example .env
+
+      - name: Generate app key
+        run: php artisan key:generate
+
+      - name: Configure test database
+        run: |
+          sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+          sed -i 's/DB_DATABASE=.*/DB_DATABASE=testing/' .env
+          sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env
+          sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=testing_root/' .env
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      - name: Run tests
+        run: php artisan test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd /var/www/monitoring
+
+            echo "Fetching latest tag..."
+            git fetch --tags
+            git checkout ${{ github.ref_name }}
+
+            echo "Rebuilding with Docker layer cache..."
+            DOCKER_BUILDKIT=1 docker compose build app
+            docker compose up -d --remove-orphans
+
+            echo "Installing composer dependencies (with vendor cache reuse)..."
+            docker compose exec -T app composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+            echo "Installing npm dependencies & building assets..."
+            docker compose exec -T app npm ci
+            docker compose exec -T app npm run build
+
+            echo "Running migrations..."
+            docker compose exec -T app php artisan migrate --force
+
+            echo "Generating Filament Shield permissions..."
+            docker compose exec -T app php artisan shield:generate --all --panel=admin --no-interaction
+
+            echo "Optimizing application..."
+            docker compose exec -T app php artisan optimize:clear
+            docker compose exec -T app php artisan config:cache
+            docker compose exec -T app php artisan route:cache
+            docker compose exec -T app php artisan view:cache
+
+            echo "Restarting MQTT worker to reconnect IoT devices..."
+            docker compose restart mqtt-worker
+
+            echo "Deployment complete."

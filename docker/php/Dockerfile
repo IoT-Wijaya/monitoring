@@ -29,3 +29,23 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
 WORKDIR /var/www/html
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+
+# --- Layer caching npm ---
+# Sama seperti composer, copy package.json & lock file dulu
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Baru copy seluruh source code aplikasi
+COPY . .
+
+# Build asset frontend (Vite/Laravel Mix)
+RUN npm run build
+
+# Jalankan composer scripts (misalnya package:discover) setelah semua file ada
+RUN composer dump-autoload --optimize
+
+EXPOSE 9000
+CMD ["php-fpm"]
