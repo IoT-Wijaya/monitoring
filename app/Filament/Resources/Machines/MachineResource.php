@@ -30,6 +30,7 @@ class MachineResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCpuChip;
     protected static UnitEnum|string|null $navigationGroup = 'Master';
+    protected static ?int $navigationSort = 2;
 
     public function getMaxContentWidth(): Width|string|null
     {
