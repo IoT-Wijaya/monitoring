@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
+use Filament\Support\Enums\Width;
 use UnitEnum;
 
 class EventLogMesin extends Page
@@ -21,5 +22,10 @@ class EventLogMesin extends Page
     public function getCachedSubNavigation(): array
     {
         return [];
+    }
+
+    public function getMaxContentWidth(): Width|string|null
+    {
+        return Width::Full;
     }
 }

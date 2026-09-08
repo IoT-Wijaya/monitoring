@@ -2,10 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Exports\RekapProduksiExport;
 use App\Models\Machine;
 use App\Models\ProductionRecap;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Maatwebsite\Excel\Excel;
 
 class RekapitulasiHarian extends Component
 {
@@ -85,5 +87,15 @@ class RekapitulasiHarian extends Component
             'recaps' => $recaps,
             'daftarMesin' => Machine::query()->orderBy('nama')->get(),
         ]);
+    }
+
+    public function exportRekap()
+    {
+        $fileName = 'rekap-produksi-' . date('Y-m-d_H-i-s') . '.xlsx';
+
+        return app(Excel::class)->download(
+            new RekapProduksiExport($this->tanggalDari, $this->tanggalSampai, $this->machineId, $this->shift),
+            $fileName
+        );
     }
 }
