@@ -121,15 +121,15 @@
             <div class="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-center">
                 <div class="bg-gray-50 dark:bg-gray-800/60 p-1.5 rounded">
                     <div class="text-[9px] text-gray-400 uppercase font-semibold">Masuk</div>
-                    <div class="text-[11px] font-bold text-gray-700 dark:text-gray-200">{{ number_format($row->sensor1_masuk) }}</div>
+                    <div class="text-[12px] font-bold text-gray-700 dark:text-gray-200">{{ number_format($row->sensor1_masuk) }}</div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-800/60 p-1.5 rounded">
                     <div class="text-[9px] text-gray-400 uppercase font-semibold">Keluar</div>
-                    <div class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($row->sensor2_keluar) }}</div>
+                    <div class="text-[12px] font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($row->sensor2_keluar) }}</div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-800/60 p-1.5 rounded">
                     <div class="text-[9px] text-gray-400 uppercase font-semibold">Selisih</div>
-                    <div class="text-[11px] font-bold">
+                    <div class="text-[12px] font-bold">
                         @if($selisih < 0)
                             <span class="text-danger-600 dark:text-danger-400">{{ number_format($selisih) }}</span>
                             @elseif($selisih > 0)
