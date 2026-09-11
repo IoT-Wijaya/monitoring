@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Machine;
 use App\Models\MachineResetLog;
 use App\Models\ProductionRecap;
-use App\Models\ProductionRecapHourly;
 use PhpMqtt\Client\Facades\MQTT;
 
 class MachineCounterService
