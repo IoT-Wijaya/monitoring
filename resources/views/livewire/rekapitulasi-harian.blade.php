@@ -156,6 +156,7 @@
                         <tr class="bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-800 text-[11px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold">
                             <th class="p-3.5 w-12 text-center">#</th>
                             <th class="p-3.5">Tanggal</th>
+                            <th class="p-3.5">Jam</th>
                             <th class="p-3.5">Nama Mesin</th>
                             <th class="p-3.5">Status Shift</th>
                             <th class="p-3.5 text-right">Masuk</th>
@@ -174,6 +175,7 @@
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                             <td class="p-3.5 text-center text-gray-400 font-mono text-[11px]">{{ $recaps->firstItem() + $index }}</td>
                             <td class="p-3.5 font-bold text-gray-800 dark:text-gray-200">{{ $row->tanggal }}</td>
+                            <td class="p-3.5 font-mono text-gray-700 dark:text-gray-300">{{ $row->jam_label }}</td> {{-- BARU --}}
                             <td class="p-3.5 font-bold text-gray-900 dark:text-white">{{ $row->machine->nama ?? '-' }}</td>
                             <td class="p-3.5">
                                 <span class="px-2.5 py-1 rounded-[4px] text-[11px] font-semibold border {{ $shiftBadgeColor }}">{{ $row->shift }}</span>
@@ -192,7 +194,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="p-8 text-center text-gray-500">Tidak ada data rekapitulasi yang sesuai dengan filter.</td>
+                            <td colspan="8" class="p-8 text-center text-gray-500">Tidak ada data rekapitulasi yang sesuai dengan filter.</td>
                         </tr>
                         @endforelse
                     </tbody>

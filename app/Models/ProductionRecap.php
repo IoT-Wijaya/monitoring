@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Query\Builder;
+
 
 class ProductionRecap extends Model
 {
@@ -54,5 +56,18 @@ class ProductionRecap extends Model
         return $query
             ->when($dari, fn($q) => $q->whereDate('tanggal', '>=', $dari))
             ->when($sampai, fn($q) => $q->whereDate('tanggal', '<=', $sampai));
+    }
+
+    protected function jamLabel(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                if (is_numeric($this->jam)) {
+                    $mulai = (int) $this->jam;
+                    return sprintf('%02d:00 - %02d:00', $mulai, ($mulai + 1) % 24);
+                }
+                return substr((string) $this->jam, 0, 5);
+            }
+        );
     }
 }

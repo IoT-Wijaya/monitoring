@@ -1,9 +1,24 @@
 <x-filament-widgets::widget>
     <x-filament::section wire:poll.1s="updateData" class="!p-0">
 
+        @php
+        $isOnline = $statusMesin === 'ONLINE';
+
+        // Meniru baris 0 LCD Arduino
+        // Online -> "LAN: OK MQTT: OK"
+        // Offline -> "LAN: OFF MQTT: NG"
+        $net = $isOnline
+        ? ['lan' => 'OK', 'mqtt' => 'OK', 'ok' => true]
+        : ['lan' => 'OFF', 'mqtt' => 'NG', 'ok' => false];
+
+        $netColor = $net['ok']
+        ? 'text-emerald-600 dark:text-emerald-400'
+        : 'text-red-500 dark:text-red-400';
+        @endphp
+
         <div wire:click="navigateToRekap" class="p-4 sm:p-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-md shadow-sm transition-colors duration-150 relative overflow-hidden cursor-pointer hover:bg-gray-100/80 dark:hover:bg-gray-800/60 group">
 
-            <!-- Bagian Atas: Identitas Mesin & Kecepatan -->
+            <!-- Bagian Atas: Identitas Mesin & Status Jaringan -->
             <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800/80 mb-4">
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-md flex items-center justify-center bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shadow-sm shrink-0">
@@ -20,30 +35,18 @@
                     </div>
                 </div>
 
-                <div class="flex sm:flex-col items-center sm:items-end justify-between bg-gray-50 dark:bg-gray-800/40 sm:bg-transparent p-2.5 sm:p-0 rounded-md">
-                    <span class="text-[10px] sm:text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Kecepatan</span>
-                    <div class="flex items-baseline justify-end gap-1 mt-0.5">
-                        <span class="text-base sm:text-lg font-extrabold font-mono tracking-tight
-                            {{ $statusMesin === 'ONLINE' ? ($kecepatanSinyal >= 50 ? 'text-emerald-600 dark:text-emerald-400' : ($kecepatanSinyal >= 20 ? 'text-amber-500 dark:text-amber-400' : 'text-red-500 dark:text-red-400')) : 'text-gray-400' }}">
-                            {{ $statusMesin === 'ONLINE' ? $kecepatanSinyal : '0' }}
-                        </span>
-                        <span class="text-[11px] sm:text-xs font-bold text-gray-400">Mbps</span>
+                <!-- Status Jaringan (sama dengan baris pertama LCD) -->
+                <div class="flex sm:flex-col items-center sm:items-end justify-between gap-1.5 bg-gray-50 dark:bg-gray-800/40 sm:bg-transparent p-2.5 sm:p-0 rounded-md">
+                    <span class="text-[10px] sm:text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Status Jaringan</span>
+                    <div class="flex items-center gap-3 font-mono text-xs sm:text-sm font-extrabold tracking-tight {{ $netColor }}">
+                        <span>LAN: {{ $net['lan'] }}</span>
+                        <span>MQTT: {{ $net['mqtt'] }}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Bagian Sub-Info: Wi-Fi Network & SSID -->
-            <div class="flex items-center justify-between mb-4 px-1 text-xs text-gray-500 dark:text-gray-400">
-                <div class="flex items-center gap-1.5">
-                    <svg class="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.117 10.325a9.003 9.003 0 017.766 0M5.293 7.502a13.002 13.002 0 0113.414 0M12 17.512h.01M10.12 14.25a4.5 4.5 0 013.76 0"></path>
-                    </svg>
-                    <span class="truncate">WiFi: <strong class="text-gray-700 dark:text-gray-300">{{ $wifiSSID }}</strong></span>
-                </div>
-            </div>
-
             <!-- Bagian Tengah: Dua Kolom Sensor -->
-            <div class="mt-2 mb-4 sm:mb-5 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-center bg-gray-50 dark:bg-gray-800/50 p-3.5 sm:p-4 rounded-md border border-gray-100 dark:border-gray-800">
+            <div class="mt-2 mb-4 sm:mb-5 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-center bg-gray-50 dark:bg-gray-800/50 p-3.5 sm:p-4 rounded-md border border-gray-100 dark:border-gray-800 {{ $isOnline ? '' : 'opacity-60' }}">
                 <div>
                     <span class="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Sensor 1</span>
                     <div class="flex items-baseline gap-1.5 mt-0.5">
@@ -52,7 +55,7 @@
                         </span>
                         <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">pcs</span>
                     </div>
-                    <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">Modal Sanding</span>
+                    <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">Hasil Sanding</span>
                 </div>
 
                 <div class="border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-gray-700 pt-3 sm:pt-0 sm:pl-4">
@@ -63,30 +66,30 @@
                         </span>
                         <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">pcs</span>
                     </div>
-                    <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">Hasil Sanding</span>
+                    <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">Modal Sanding</span>
                 </div>
             </div>
 
-            <!-- Bagian Tombol Reset (Full width di HP, Flex ke kanan di Tablet/Desktop) -->
+            <!-- Bagian Tombol Reset -->
             <div class="mb-4 flex flex-col sm:flex-row justify-end gap-2" wire:click.stop>
                 <x-filament::button
                     wire:click="resetCounter('sensor1')"
-                    wire:confirm="Yakin ingin mereset Modal Sanding ke 0?"
-                    color="gray"
-                    size="xs"
-                    class="w-full sm:w-auto justify-center"
-                    :disabled="$statusMesin === 'OFFLINE'">
-                    Reset Modal
-                </x-filament::button>
-
-                <x-filament::button
-                    wire:click="resetCounter('sensor2')"
                     wire:confirm="Yakin ingin mereset Hasil Sanding ke 0?"
                     color="warning"
                     size="xs"
                     class="w-full sm:w-auto justify-center"
-                    :disabled="$statusMesin === 'OFFLINE'">
+                    :disabled="! $isOnline">
                     Reset Hasil
+                </x-filament::button>
+
+                <x-filament::button
+                    wire:click="resetCounter('sensor2')"
+                    wire:confirm="Yakin ingin mereset Modal Sanding ke 0?"
+                    color="gray"
+                    size="xs"
+                    class="w-full sm:w-auto justify-center"
+                    :disabled="! $isOnline">
+                    Reset Modal
                 </x-filament::button>
 
                 <x-filament::button
@@ -96,7 +99,7 @@
                     size="xs"
                     icon="heroicon-m-arrow-path"
                     class="w-full sm:w-auto justify-center"
-                    :disabled="$statusMesin === 'OFFLINE'">
+                    :disabled="! $isOnline">
                     Reset Semua
                 </x-filament::button>
             </div>
@@ -104,7 +107,7 @@
             <!-- Bagian Bawah: Status Online/Offline -->
             <div class="pt-3 border-t border-gray-100 dark:border-gray-800/80 flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                    @if($statusMesin === 'ONLINE')
+                    @if($isOnline)
                     <span class="inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 animate-pulse"></span>
                     <span class="text-xs font-bold tracking-wide text-emerald-600 dark:text-emerald-400">ONLINE</span>
                     @else

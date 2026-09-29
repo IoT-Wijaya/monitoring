@@ -20,9 +20,9 @@ class RekapitulasiHarian extends Component
 
     public function mount(?string $machine = null): void
     {
-        // Default: hari ini dan 4 hari sebelumnya
-        $this->tanggalDari = $this->tanggalDari ?? now()->format('Y-m-d');
-        $this->tanggalSampai = $this->tanggalSampai ?? now()->format('Y-m-d');
+        // Default: hari ini (diisi langsung, bukan pakai ??)
+        $this->tanggalDari = now()->format('Y-m-d');
+        $this->tanggalSampai = now()->format('Y-m-d');
 
         // Jika halaman dibuka dengan parameter mesin dari URL
         if ($machine) {
@@ -65,22 +65,11 @@ class RekapitulasiHarian extends Component
     {
         $recaps = ProductionRecap::query()
             ->with('machine')
-            ->when(
-                $this->machineId,
-                fn($query) =>
-                $query->where('machine_id', $this->machineId)
-            )
-            ->when(
-                $this->shift,
-                fn($query) =>
-                $query->where('shift', $this->shift)
-            )
-            ->when(
-                $this->tanggalDari && $this->tanggalSampai,
-                fn($query) =>
-                $query->whereBetween('tanggal', [$this->tanggalDari, $this->tanggalSampai])
-            )
+            ->mesin($this->machineId)
+            ->shift($this->shift)
+            ->rentangTanggal($this->tanggalDari, $this->tanggalSampai)
             ->orderByDesc('tanggal')
+            ->orderByDesc('jam')
             ->paginate(20);
 
         return view('livewire.rekapitulasi-harian', [
