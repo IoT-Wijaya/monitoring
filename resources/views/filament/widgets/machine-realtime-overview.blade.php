@@ -54,6 +54,12 @@
                         <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">{{ $satuan }}</span>
                     </div>
                     <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">{{ $labelSensor1 }}</span>
+                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block mt-1">Terakhir bertambah: {{ $terakhirSensor1 }}</span>
+                    @if($infoSensor1)
+                    <div class="mt-2 rounded-md border border-warning-500/30 bg-warning-500/10 px-2 py-1.5 text-[11px] font-semibold text-warning-700 dark:text-warning-400">
+                        Perlu dicek: {{ $infoSensor1 }}
+                    </div>
+                    @endif
                 </div>
 
                 <div class="border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-gray-700 pt-3 sm:pt-0 sm:pl-4">
@@ -65,6 +71,12 @@
                         <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">{{ $satuan }}</span>
                     </div>
                     <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">{{ $labelSensor2 }}</span>
+                    <span class="text-[10px] text-gray-500 dark:text-gray-400 block mt-1">Terakhir bertambah: {{ $terakhirSensor2 }}</span>
+                    @if($infoSensor2)
+                    <div class="mt-2 rounded-md border border-warning-500/30 bg-warning-500/10 px-2 py-1.5 text-[11px] font-semibold text-warning-700 dark:text-warning-400">
+                        Perlu dicek: {{ $infoSensor2 }}
+                    </div>
+                    @endif
                 </div>
             </div>
 

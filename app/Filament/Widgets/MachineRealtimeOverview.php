@@ -4,6 +4,8 @@ namespace App\Filament\Widgets;
 
 use App\Models\Machine;
 use App\Services\MachineCounterService;
+use App\Services\MachineEventService;
+use Carbon\Carbon;
 use Filament\Notifications\Notification;
 use Filament\Widgets\Widget;
 
@@ -39,6 +41,11 @@ abstract class MachineRealtimeOverview extends Widget
     public bool $sensor1Error = false;
     public bool $sensor2Error = false;
 
+    public ?string $infoSensor1 = null;
+    public ?string $infoSensor2 = null;
+    public string $terakhirSensor1 = '-';
+    public string $terakhirSensor2 = '-';
+
     public function mount(): void
     {
         if (static::$machineSlug === '') {
@@ -64,6 +71,12 @@ abstract class MachineRealtimeOverview extends Widget
         $this->wifiSSID = $status['ssid'];
         $this->sensor1Error = $status['s1_error'];
         $this->sensor2Error = $status['s2_error'];
+        $diagnosa = app(MachineEventService::class)->diagnosaTersimpan(static::$machineSlug);
+        $counter = app(MachineCounterService::class);
+        $this->infoSensor1 = $diagnosa['s1'];
+        $this->infoSensor2 = $diagnosa['s2'];
+        $this->terakhirSensor1 = $this->formatTerakhir($counter->terakhirBerubah(static::$machineSlug, 's1'));
+        $this->terakhirSensor2 = $this->formatTerakhir($counter->terakhirBerubah(static::$machineSlug, 's2'));
     }
 
     public function resetCounter(string $target = 'all'): void
@@ -90,5 +103,16 @@ abstract class MachineRealtimeOverview extends Widget
         $this->redirect(route('filament.admin.pages.rekapitulasi-harian', [
             'machine' => static::$machineSlug,
         ]));
+    }
+
+    private function formatTerakhir(?int $timestamp): string
+    {
+        if (! $timestamp) {
+            return '-';
+        }
+
+        $waktu = Carbon::createFromTimestamp($timestamp)->locale('id');
+
+        return $waktu->format('H:i:s') . ' (' . $waktu->diffForHumans() . ')';
     }
 }

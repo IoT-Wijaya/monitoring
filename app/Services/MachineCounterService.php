@@ -34,7 +34,22 @@ class MachineCounterService
 
     public function simpanDariMqtt(string $slug, string $jenis, string $pesan): void
     {
-        cache()->put($this->cacheKey($slug, 'last_seen'), now()->timestamp);
+        $sebelumnya = cache()->get($this->cacheKey($slug, 'last_seen'));
+        $sekarang = now()->timestamp;
+        cache()->put($this->cacheKey($slug, 'last_seen'), $sekarang);
+
+        // Perangkat kembali setelah senyap: mulai pengamatan baru.
+        $baruPulih = $sebelumnya && ($sekarang - $sebelumnya) > 15;
+        if ($baruPulih) {
+            cache()->put($this->cacheKey($slug, 'amati_mulai'), $sekarang);
+        }
+
+        // Catat perubahan hitungan SEBELUM nilai lama ditimpa.
+        if ($jenis === 'jumlah') {
+            $this->catatPerubahan($slug, 's1', (int) $pesan);
+        } elseif ($jenis === 'jumlah2') {
+            $this->catatPerubahan($slug, 's2', (int) $pesan);
+        }
 
         match ($jenis) {
             'jumlah' => cache()->put($this->cacheKey($slug, 'jumlah_s1'), (int) $pesan),
@@ -45,6 +60,65 @@ class MachineCounterService
             's2_error' => cache()->put($this->cacheKey($slug, 's2_error'), $pesan === '1'),
             default => null,
         };
+
+        if ($baruPulih && ($machine = Machine::firstWhere('slug', $slug))) {
+            try {
+                app(MachineEventService::class)->periksa($machine);
+            } catch (\Throwable $e) {
+                report($e); // jangan sampai listener MQTT ikut mati
+            }
+        }
+    }
+
+    private function catatPerubahan(string $slug, string $sensor, int $baru): void
+    {
+        $kunciJumlah = $this->cacheKey($slug, "jumlah_{$sensor}");
+        $adaSebelumnya = cache()->has($kunciJumlah);
+        $lama = (int) cache()->get($kunciJumlah, 0);
+
+        if ($baru === $lama) {
+            return;
+        }
+
+        cache()->put($this->cacheKey($slug, "{$sensor}_berubah"), now()->timestamp);
+
+        // Selisih tepat setelah perangkat kembali/direset, atau sampel pertama setelah cache kosong,
+        // adalah kiriman ulang, bukan laju nyata: jangan dihitung sebagai lonjakan.
+        $mulai = $this->mulaiAmati($slug);
+        $abaikanLaju = ! $adaSebelumnya || ($mulai && (now()->timestamp - $mulai) <= 30);
+
+        if ($baru > $lama && ! $abaikanLaju) {
+            $kunci = $this->cacheKey($slug, "{$sensor}_laju_" . now()->format('YmdHi'));
+            cache()->add($kunci, 0, 1800);
+            cache()->increment($kunci, $baru - $lama);
+        }
+    }
+
+    public function terakhirBerubah(string $slug, string $sensor): ?int
+    {
+        $nilai = cache()->get($this->cacheKey($slug, "{$sensor}_berubah"));
+
+        return $nilai ? (int) $nilai : null;
+    }
+
+    public function mulaiAmati(string $slug): ?int
+    {
+        $nilai = cache()->get($this->cacheKey($slug, 'amati_mulai'));
+
+        return $nilai ? (int) $nilai : null;
+    }
+
+    /** Hitungan per menit untuk menit ke-$dari sampai ke-$sampai sebelum sekarang (1 = menit lengkap terakhir). */
+    public function lajuMenit(string $slug, string $sensor, int $dari, int $sampai): array
+    {
+        $kunci = [];
+        for ($i = $dari; $i <= $sampai; $i++) {
+            $kunci[$i] = $this->cacheKey($slug, "{$sensor}_laju_" . now()->subMinutes($i)->format('YmdHi'));
+        }
+
+        $nilai = cache()->many(array_values($kunci));
+
+        return array_map(fn($k) => (int) ($nilai[$k] ?? 0), $kunci);
     }
 
     public function bacaStatus(string $slug): array
@@ -96,6 +170,7 @@ class MachineCounterService
         $mqtt = MQTT::connection();
         $mqtt->publish("pabrik/{$slug}/perintah", $command, 0);
         $mqtt->disconnect();
+        cache()->put($this->cacheKey($slug, 'amati_mulai'), now()->timestamp);
     }
 
     public function shiftSaatIni(?Carbon $waktu = null): string
