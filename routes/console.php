@@ -13,3 +13,7 @@ Schedule::command('rekap:snapshot-jam')
     ->timezone('Asia/Jakarta')
     ->withoutOverlapping()
     ->appendOutputTo(storage_path('logs/snapshot-jam.log'));
+
+Schedule::command('mesin:cek-event')
+    ->everyTenSeconds()
+    ->withoutOverlapping();

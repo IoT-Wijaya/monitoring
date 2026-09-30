@@ -5,8 +5,6 @@
         $isOnline = $statusMesin === 'ONLINE';
 
         // Meniru baris 0 LCD Arduino
-        // Online -> "LAN: OK MQTT: OK"
-        // Offline -> "LAN: OFF MQTT: NG"
         $net = $isOnline
         ? ['lan' => 'OK', 'mqtt' => 'OK', 'ok' => true]
         : ['lan' => 'OFF', 'mqtt' => 'NG', 'ok' => false];
@@ -35,7 +33,7 @@
                     </div>
                 </div>
 
-                <!-- Status Jaringan (sama dengan baris pertama LCD) -->
+                <!-- Status Jaringan -->
                 <div class="flex sm:flex-col items-center sm:items-end justify-between gap-1.5 bg-gray-50 dark:bg-gray-800/40 sm:bg-transparent p-2.5 sm:p-0 rounded-md">
                     <span class="text-[10px] sm:text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Status Jaringan</span>
                     <div class="flex items-center gap-3 font-mono text-xs sm:text-sm font-extrabold tracking-tight {{ $netColor }}">
@@ -51,22 +49,22 @@
                     <span class="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Sensor 1</span>
                     <div class="flex items-baseline gap-1.5 mt-0.5">
                         <span class="text-2xl sm:text-3xl font-black font-mono text-gray-900 dark:text-white tracking-tight">
-                            {{ number_format($totalSanding) }}
+                            {{ number_format($totalSensor1) }}
                         </span>
-                        <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">pcs</span>
+                        <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">{{ $satuan }}</span>
                     </div>
-                    <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">Hasil Sanding</span>
+                    <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">{{ $labelSensor1 }}</span>
                 </div>
 
                 <div class="border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-gray-700 pt-3 sm:pt-0 sm:pl-4">
                     <span class="text-[10px] sm:text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Sensor 2</span>
                     <div class="flex items-baseline gap-1.5 mt-0.5">
                         <span class="text-2xl sm:text-3xl font-black font-mono text-gray-900 dark:text-white tracking-tight">
-                            {{ number_format($totalSanding2) }}
+                            {{ number_format($totalSensor2) }}
                         </span>
-                        <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">pcs</span>
+                        <span class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">{{ $satuan }}</span>
                     </div>
-                    <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">Modal Sanding</span>
+                    <span class="text-[11px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 block mt-1">{{ $labelSensor2 }}</span>
                 </div>
             </div>
 
@@ -74,22 +72,22 @@
             <div class="mb-4 flex flex-col sm:flex-row justify-end gap-2" wire:click.stop>
                 <x-filament::button
                     wire:click="resetCounter('sensor1')"
-                    wire:confirm="Yakin ingin mereset Hasil Sanding ke 0?"
+                    wire:confirm="Yakin ingin mereset {{ $labelSensor1 }} ke 0?"
                     color="warning"
                     size="xs"
                     class="w-full sm:w-auto justify-center"
                     :disabled="! $isOnline">
-                    Reset Hasil
+                    Reset {{ $labelSensor1 }}
                 </x-filament::button>
 
                 <x-filament::button
                     wire:click="resetCounter('sensor2')"
-                    wire:confirm="Yakin ingin mereset Modal Sanding ke 0?"
+                    wire:confirm="Yakin ingin mereset {{ $labelSensor2 }} ke 0?"
                     color="gray"
                     size="xs"
                     class="w-full sm:w-auto justify-center"
                     :disabled="! $isOnline">
-                    Reset Modal
+                    Reset {{ $labelSensor2 }}
                 </x-filament::button>
 
                 <x-filament::button

@@ -25,6 +25,13 @@ class MachineCounterService
         return (int) cache()->get($this->cacheKey($slug, 'jumlah_s2'), 0);
     }
 
+    public function lastSeen(string $slug): ?int
+    {
+        $nilai = cache()->get($this->cacheKey($slug, 'last_seen'));
+
+        return $nilai ? (int) $nilai : null;
+    }
+
     public function simpanDariMqtt(string $slug, string $jenis, string $pesan): void
     {
         cache()->put($this->cacheKey($slug, 'last_seen'), now()->timestamp);

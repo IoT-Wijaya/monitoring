@@ -120,12 +120,12 @@
             </div>
             <div class="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-center">
                 <div class="bg-gray-50 dark:bg-gray-800/60 p-1.5 rounded">
-                    <div class="text-[9px] text-gray-400 uppercase font-semibold">Masuk</div>
-                    <div class="text-[12px] font-bold text-gray-700 dark:text-gray-200">{{ number_format($row->sensor1_masuk) }}</div>
-                </div>
-                <div class="bg-gray-50 dark:bg-gray-800/60 p-1.5 rounded">
                     <div class="text-[9px] text-gray-400 uppercase font-semibold">Keluar</div>
                     <div class="text-[12px] font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($row->sensor2_keluar) }}</div>
+                </div>
+                <div class="bg-gray-50 dark:bg-gray-800/60 p-1.5 rounded">
+                    <div class="text-[9px] text-gray-400 uppercase font-semibold">Masuk</div>
+                    <div class="text-[12px] font-bold text-gray-700 dark:text-gray-200">{{ number_format($row->sensor1_masuk) }}</div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-800/60 p-1.5 rounded">
                     <div class="text-[9px] text-gray-400 uppercase font-semibold">Selisih</div>
@@ -159,8 +159,8 @@
                             <th class="p-3.5">Jam</th>
                             <th class="p-3.5">Nama Mesin</th>
                             <th class="p-3.5">Status Shift</th>
-                            <th class="p-3.5 text-right">Masuk</th>
                             <th class="p-3.5 text-right">Keluar</th>
+                            <th class="p-3.5 text-right">Masuk</th>
                             <th class="p-3.5 text-right">Selisih</th>
                         </tr>
                     </thead>
@@ -180,8 +180,8 @@
                             <td class="p-3.5">
                                 <span class="px-2.5 py-1 rounded-[4px] text-[11px] font-semibold border {{ $shiftBadgeColor }}">{{ $row->shift }}</span>
                             </td>
-                            <td class="p-3.5 text-right font-semibold text-gray-800 dark:text-gray-200">{{ number_format($row->sensor1_masuk) }} pcs</td>
                             <td class="p-3.5 text-right font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($row->sensor2_keluar) }} pcs</td>
+                            <td class="p-3.5 text-right font-semibold text-gray-800 dark:text-gray-200">{{ number_format($row->sensor1_masuk) }} pcs</td>
                             <td class="p-3.5 text-right font-medium">
                                 @if($selisih < 0)
                                     <span class="text-danger-600 dark:text-danger-400 font-bold">{{ number_format($selisih) }} pcs</span>
