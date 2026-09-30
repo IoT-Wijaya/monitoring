@@ -27,10 +27,10 @@ class ProductionRecap extends Model
         return $this->belongsTo(Machine::class);
     }
 
-    protected function selisih(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function selisih(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
-            get: fn() => $this->sensor2_keluar - $this->sensor1_masuk,
+        return Attribute::make(
+            get: fn() => $this->produksi_s2 - $this->produksi_s1,
         );
     }
 
