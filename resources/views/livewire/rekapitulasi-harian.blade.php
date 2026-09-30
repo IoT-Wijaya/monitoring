@@ -103,14 +103,12 @@
     <div>
         @forelse($recaps as $index => $row)
         @php
-        // Sensor 2 = Modal Sanding, Sensor 1 = Hasil Sanding (angka per jam)
-        $modal = $row->produksi_s2;
-        $hasil = $row->produksi_s1;
-        $selisih = $modal - $hasil;
+        $selisih = $row->sensor2_keluar - $row->sensor1_masuk;
         $shiftBadgeColor = $row->shift === 'Shift Malam'
         ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
         : 'bg-warning-500/10 text-warning-600 dark:text-warning-400 border-warning-500/20';
         @endphp
+
 
         <!-- TAMPILAN MOBILE (Card View - hanya tampil di layar kecil) -->
         <div class="block md:hidden p-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-[6px] shadow-sm space-y-2.5 mb-3">
@@ -174,8 +172,8 @@
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-800 text-xs">
                         @forelse($recaps as $index => $row)
                         @php
-                        $modal = $row->produksi_s2;
-                        $hasil = $row->produksi_s1;
+                        $modal = $row->sensor2_keluar;
+                        $hasil = $row->sensor1_masuk;
                         $selisih = $modal - $hasil;
                         $shiftBadgeColor = $row->shift === 'Shift Malam'
                         ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
