@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Machine;
 use App\Models\MachineResetLog;
 use App\Models\ProductionRecap;
+use Carbon\Carbon;
 use PhpMqtt\Client\Facades\MQTT;
 
 class MachineCounterService
@@ -90,33 +91,51 @@ class MachineCounterService
         $mqtt->disconnect();
     }
 
-    public function shiftSaatIni(): string
+    public function shiftSaatIni(?Carbon $waktu = null): string
     {
-        $jam = (int) now()->format('H');
+        $jam = (int) ($waktu ?? now())->format('H');
 
         return ($jam >= 6 && $jam < 18) ? 'Shift Pagi' : 'Shift Malam';
     }
 
-    /**
-     * Snapshot angka cache saat ini ke rekap per jam.
-     * TIDAK menolkan cache, TIDAK mengirim perintah ke ESP32 -
-     * murni "foto" angka kumulatif untuk dianalisis per jam nanti.
-     * Dipanggil dari command terjadwal (hourly), bukan dari widget.
-     */
     public function snapshotPerJam(Machine $machine): void
     {
         $slug = $machine->slug;
 
+        // Foto diambil di menit 0, jadi yang dicatat adalah jam yang baru selesai.
+        $waktu = now()->subHour();
+        $tanggal = $waktu->toDateString();
+        $jam = (int) $waktu->format('H');
+
+        $s1 = $this->jumlahS1($slug);
+        $s2 = $this->jumlahS2($slug);
+
+        // Foto sebelumnya milik mesin yang sama.
+        $sebelumnya = ProductionRecap::where('machine_id', $machine->id)
+            ->where(function ($q) use ($tanggal, $jam) {
+                $q->whereDate('tanggal', '<', $tanggal)
+                    ->orWhere(fn($q2) => $q2->whereDate('tanggal', $tanggal)->where('jam', '<', $jam));
+            })
+            ->orderByDesc('tanggal')->orderByDesc('jam')
+            ->first();
+
+        // Angka yang hilang karena reset selama jam tersebut.
+        $reset = MachineResetLog::where('machine_id', $machine->id)
+            ->whereBetween('created_at', [$waktu->copy()->startOfHour(), $waktu->copy()->endOfHour()])
+            ->selectRaw('COALESCE(SUM(jumlah_s1_sebelum_reset),0) as s1, COALESCE(SUM(jumlah_s2_sebelum_reset),0) as s2')
+            ->first();
+
+        $produksiS1 = max(0, $s1 - ($sebelumnya->sensor1_masuk ?? 0) + (int) $reset->s1);
+        $produksiS2 = max(0, $s2 - ($sebelumnya->sensor2_keluar ?? 0) + (int) $reset->s2);
+
         ProductionRecap::updateOrCreate(
+            ['machine_id' => $machine->id, 'tanggal' => $tanggal, 'jam' => $jam],
             [
-                'machine_id' => $machine->id,
-                'tanggal' => now()->toDateString(),
-                'jam' => (int) now()->format('H'),
-            ],
-            [
-                'shift' => $this->shiftSaatIni(),
-                'sensor1_masuk' => $this->jumlahS1($slug),
-                'sensor2_keluar' => $this->jumlahS2($slug),
+                'shift' => $this->shiftSaatIni($waktu),
+                'sensor1_masuk' => $s1,
+                'sensor2_keluar' => $s2,
+                'produksi_s1' => $produksiS1,
+                'produksi_s2' => $produksiS2,
             ]
         );
     }

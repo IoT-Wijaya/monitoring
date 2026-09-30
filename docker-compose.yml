@@ -101,6 +101,36 @@ services:
         networks:
             - laravel
 
+    scheduler:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        image: laravel-custom-app
+        container_name: monitoring_scheduler
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+        command: php artisan schedule:work
+        networks:
+            - laravel
+        environment:
+            - TZ=Asia/Jakarta
+            - APP_ENV=production
+            - APP_DEBUG=false
+            - DB_CONNECTION=mysql
+            - DB_HOST=mysql
+            - DB_PORT=3306
+            - DB_DATABASE=wijayapl_monitoring
+            - DB_USERNAME=wijayapl_monitoring
+            - DB_PASSWORD=monitoring_wijaya21
+            - MQTT_HOST=mosquitto
+            - MQTT_PORT=1883
+            - MQTT_USERNAME=dashboard_user
+            - MQTT_PASSWORD=PasswordDashboardYangKuat
+        depends_on:
+            - mysql
+
 networks:
     laravel:
         driver: bridge
