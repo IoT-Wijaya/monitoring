@@ -89,6 +89,10 @@ jobs:
             set -e
             cd /var/www/monitoring
 
+            echo "Cleaning up local git state..."
+            git reset --hard
+            git clean -fd
+
             echo "Fetching latest tag..."
             git fetch --tags
             git checkout ${{ github.ref_name }}
@@ -97,7 +101,7 @@ jobs:
             DOCKER_BUILDKIT=1 docker compose build app
             docker compose up -d --remove-orphans
 
-            echo "Installing composer dependencies (with vendor cache reuse)..."
+            echo "Installing composer dependencies..."
             docker compose exec -T app composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
             echo "Installing npm dependencies & building assets..."
@@ -106,6 +110,9 @@ jobs:
 
             echo "Running migrations..."
             docker compose exec -T app php artisan migrate --force
+
+            echo "Linking storage..."
+            docker compose exec -T app php artisan storage:link --force
 
             echo "Generating Filament Shield permissions..."
             docker compose exec -T app php artisan shield:generate --all --panel=admin --no-interaction
@@ -118,5 +125,8 @@ jobs:
 
             echo "Restarting MQTT worker to reconnect IoT devices..."
             docker compose restart mqtt-worker
+
+            echo "Cleaning up old Docker images..."
+            docker image prune -f
 
             echo "Deployment complete."
