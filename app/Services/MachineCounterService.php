@@ -10,6 +10,8 @@ use PhpMqtt\Client\Facades\MQTT;
 
 class MachineCounterService
 {
+    private const HARI_PRODUKSI_MULAI = 5;
+
     private function cacheKey(string $slug, string $field): string
     {
         return "veneer_{$slug}_{$field}";
@@ -180,7 +182,7 @@ class MachineCounterService
         return ($jam >= 6 && $jam < 18) ? 'Shift Pagi' : 'Shift Malam';
     }
 
-    public function snapshotPerJam(Machine $machine): void
+    public function snapshotPerJam(Machine $machine): ?ProductionRecap
     {
         $slug = $machine->slug;
 
@@ -192,7 +194,7 @@ class MachineCounterService
         $s1 = $this->jumlahS1($slug);
         $s2 = $this->jumlahS2($slug);
 
-        // Foto sebelumnya milik mesin yang sama.
+        // Baris terakhir yang tercatat milik mesin ini (patokan perhitungan).
         $sebelumnya = ProductionRecap::where('machine_id', $machine->id)
             ->where(function ($q) use ($tanggal, $jam) {
                 $q->whereDate('tanggal', '<', $tanggal)
@@ -201,16 +203,26 @@ class MachineCounterService
             ->orderByDesc('tanggal')->orderByDesc('jam')
             ->first();
 
-        // Angka yang hilang karena reset selama jam tersebut.
+        // Jendela reset: dari akhir baris terakhir sampai akhir jam ini,
+        // supaya reset di jam yang dilewati (mesin diam) tetap terhitung.
+        $awalJendela = $sebelumnya
+            ? $sebelumnya->tanggal->copy()->setTime((int) $sebelumnya->jam, 0)->addHour()
+            : $waktu->copy()->startOfHour();
+
         $reset = MachineResetLog::where('machine_id', $machine->id)
-            ->whereBetween('created_at', [$waktu->copy()->startOfHour(), $waktu->copy()->endOfHour()])
+            ->whereBetween('created_at', [$awalJendela, $waktu->copy()->endOfHour()])
             ->selectRaw('COALESCE(SUM(jumlah_s1_sebelum_reset),0) as s1, COALESCE(SUM(jumlah_s2_sebelum_reset),0) as s2')
             ->first();
 
-        $produksiS1 = max(0, $s1 - ($sebelumnya->sensor1_masuk ?? 0) + (int) $reset->s1);
-        $produksiS2 = max(0, $s2 - ($sebelumnya->sensor2_keluar ?? 0) + (int) $reset->s2);
+        $produksiS1 = $this->hitungProduksi($s1, $sebelumnya?->sensor1_masuk, (int) $reset->s1);
+        $produksiS2 = $this->hitungProduksi($s2, $sebelumnya?->sensor2_keluar, (int) $reset->s2);
 
-        ProductionRecap::updateOrCreate(
+        // Mesin tidak bergerak: jangan direkap.
+        if ($produksiS1 === 0 && $produksiS2 === 0) {
+            return null;
+        }
+
+        return ProductionRecap::updateOrCreate(
             ['machine_id' => $machine->id, 'tanggal' => $tanggal, 'jam' => $jam],
             [
                 'shift' => $this->shiftSaatIni($waktu),
@@ -220,5 +232,20 @@ class MachineCounterService
                 'produksi_s2' => $produksiS2,
             ]
         );
+    }
+
+    /**
+     * Produksi = counter sekarang - counter patokan + angka yang hilang karena reset.
+     * Jika hasilnya negatif tanpa ada log reset, perangkat restart: hitung dari 0.
+     */
+    private function hitungProduksi(int $sekarang, ?int $patokan, int $hilangKarenaReset): int
+    {
+        if ($patokan === null) {
+            return $sekarang + $hilangKarenaReset;
+        }
+
+        $selisih = $sekarang - $patokan + $hilangKarenaReset;
+
+        return $selisih >= 0 ? $selisih : $sekarang;
     }
 }

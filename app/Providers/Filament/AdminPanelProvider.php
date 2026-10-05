@@ -66,6 +66,9 @@ class AdminPanelProvider extends PanelProvider
                 NavigationGroup::make('Riwayat')
                     ->collapsed(),
 
+                NavigationGroup::make('Maintenance')
+                    ->collapsed(),
+
                 NavigationGroup::make('Master')
                     ->collapsed(),
             ]);

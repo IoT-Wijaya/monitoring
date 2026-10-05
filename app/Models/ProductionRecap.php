@@ -16,6 +16,8 @@ class ProductionRecap extends Model
         'shift',
         'sensor1_masuk',
         'sensor2_keluar',
+        'produksi_s1',
+        'produksi_s2',
     ];
 
     protected $casts = [

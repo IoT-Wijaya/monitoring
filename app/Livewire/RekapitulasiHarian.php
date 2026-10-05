@@ -63,17 +63,25 @@ class RekapitulasiHarian extends Component
      */
     public function render()
     {
-        $recaps = ProductionRecap::query()
-            ->with('machine')
+        // Query dasar dipakai bersama oleh tabel dan total, jadi angkanya selalu cocok
+        $query = ProductionRecap::query()
             ->mesin($this->machineId)
             ->shift($this->shift)
-            ->rentangTanggal($this->tanggalDari, $this->tanggalSampai)
+            ->rentangTanggal($this->tanggalDari, $this->tanggalSampai);
+
+        $total = (clone $query)
+            ->selectRaw('COALESCE(SUM(produksi_s1), 0) as masuk, COALESCE(SUM(produksi_s2), 0) as keluar')
+            ->first();
+
+        $recaps = $query
+            ->with('machine')
             ->orderByDesc('tanggal')
             ->orderByDesc('jam')
             ->paginate(20);
 
         return view('livewire.rekapitulasi-harian', [
             'recaps' => $recaps,
+            'total' => $total,
             'daftarMesin' => Machine::query()->orderBy('nama')->get(),
         ]);
     }

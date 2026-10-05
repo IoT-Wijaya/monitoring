@@ -15,4 +15,9 @@ class Machine extends Model
     {
         return $this->hasMany(ProductionRecap::class);
     }
+
+    public function maintenanceLogs()
+    {
+        return $this->hasMany(MaintenanceLog::class);
+    }
 }

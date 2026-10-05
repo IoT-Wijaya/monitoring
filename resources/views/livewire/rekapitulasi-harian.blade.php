@@ -91,8 +91,16 @@
         </div>
 
         <!-- Total Counter Badge -->
-        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[4px] text-center lg:text-left">
-            Total: <span class="font-bold text-warning-600 dark:text-warning-400">{{ $recaps->total() }}</span> Data Rekap
+        <div class="flex flex-wrap items-center justify-center lg:justify-end gap-2 text-xs font-medium">
+            <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[4px] text-gray-500 dark:text-gray-400">
+                Masuk: <span class="font-bold text-gray-800 dark:text-gray-200">{{ number_format((int) $total->masuk) }}</span>
+            </div>
+            <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[4px] text-gray-500 dark:text-gray-400">
+                Keluar: <span class="font-bold text-emerald-600 dark:text-emerald-400">{{ number_format((int) $total->keluar) }}</span>
+            </div>
+            <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-[4px] text-gray-500 dark:text-gray-400">
+                <span class="font-bold text-warning-600 dark:text-warning-400">{{ $recaps->total() }}</span> Data Rekap
+            </div>
         </div>
     </div>
 
@@ -111,7 +119,8 @@
             <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
                 <div class="flex items-center gap-2">
                     <span class="text-[10px] font-mono text-gray-400 font-bold">#{{ $recaps->firstItem() + $index }}</span>
-                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200">{{ $row->tanggal }}</span>
+                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200">{{ $row->tanggal->format('d-m-Y') }}</span>
+                    <span class="text-[10px] font-mono text-gray-500">{{ $row->jam_label }}</span>
                 </div>
                 <span class="px-2 py-0.5 rounded text-[10px] font-semibold border {{ $shiftBadgeColor }}">{{ $row->shift }}</span>
             </div>
