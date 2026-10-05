@@ -119,7 +119,7 @@
             <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
                 <div class="flex items-center gap-2">
                     <span class="text-[10px] font-mono text-gray-400 font-bold">#{{ $recaps->firstItem() + $index }}</span>
-                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200">{{ $row->tanggal->format('d-m-Y') }}</span>
+                    <span class="text-xs font-bold text-gray-800 dark:text-gray-200">{{ \Carbon\Carbon::parse($row->tanggal)->format('d-m-Y') }}</span>
                     <span class="text-[10px] font-mono text-gray-500">{{ $row->jam_label }}</span>
                 </div>
                 <span class="px-2 py-0.5 rounded text-[10px] font-semibold border {{ $shiftBadgeColor }}">{{ $row->shift }}</span>
@@ -183,7 +183,7 @@
                         @endphp
                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                             <td class="p-3.5 text-center text-gray-400 font-mono text-[11px]">{{ $recaps->firstItem() + $index }}</td>
-                            <td class="p-3.5 font-bold text-gray-800 dark:text-gray-200">{{ $row->tanggal }}</td>
+                            <td class="p-3.5 font-bold text-gray-800 dark:text-gray-200">{{ \Carbon\Carbon::parse($row->tanggal)->format('d-m-Y') }}</td>
                             <td class="p-3.5 font-mono text-gray-700 dark:text-gray-300">{{ $row->jam_label }}</td> {{-- BARU --}}
                             <td class="p-3.5 font-bold text-gray-900 dark:text-white">{{ $row->machine->nama ?? '-' }}</td>
                             <td class="p-3.5">
