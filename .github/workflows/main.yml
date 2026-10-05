@@ -93,6 +93,12 @@ jobs:
             git reset --hard
             git clean -fd
 
+            echo "Cleaning up local git state (excluding storage)..."
+              # Abaikan perubahan pada folder storage dan cache agar tidak bentrok
+              git checkout storage/ bootstrap/cache/ || true
+              git reset --hard
+              git clean -fd -e storage/ -e bootstrap/cache/
+
             echo "Fetching latest tag..."
             git fetch --tags
             git checkout ${{ github.ref_name }}
