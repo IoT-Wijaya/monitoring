@@ -83,14 +83,14 @@
 
             </div>
 
-            <!-- Bagian Tombol Reset (Gaya Monokrom Zinc-950/Zinc-50) -->
-            <div class="mb-4 flex flex-wrap items-center justify-end gap-2" wire:click.stop>
+            <!-- Bagian Tombol Reset: 3 baris penuh di mobile, rata kanan di tablet+ -->
+            <div class="mb-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end" wire:click.stop>
                 <x-filament::button
                     wire:click="resetCounter('sensor1')"
                     wire:confirm="Yakin ingin mereset {{ $labelSensor1 }} ke 0?"
                     color="gray"
                     size="xs"
-                    class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 shadow-2xs"
+                    class="w-full sm:w-auto justify-center rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 shadow-2xs"
                     :disabled="! $isOnline">
                     Reset {{ $labelSensor1 }}
                 </x-filament::button>
@@ -100,7 +100,7 @@
                     wire:confirm="Yakin ingin mereset {{ $labelSensor2 }} ke 0?"
                     color="gray"
                     size="xs"
-                    class="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 shadow-2xs"
+                    class="w-full sm:w-auto justify-center rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700/80 shadow-2xs"
                     :disabled="! $isOnline">
                     Reset {{ $labelSensor2 }}
                 </x-filament::button>
@@ -111,7 +111,7 @@
                     color="gray"
                     size="xs"
                     icon="heroicon-m-arrow-path"
-                    class="rounded-md bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-2xs font-medium"
+                    class="w-full sm:w-auto justify-center rounded-md bg-zinc-900 dark:bg-zinc-50 text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-2xs font-medium"
                     :disabled="! $isOnline">
                     Reset Semua
                 </x-filament::button>
