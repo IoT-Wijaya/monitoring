@@ -48,9 +48,19 @@ class ProductionRecap extends Model
         return $query->when($machineId, fn($q) => $q->where('machine_id', $machineId));
     }
 
-    public function scopeShift(Builder $query, ?string $shift): Builder
+    public function scopeShift(Builder $query, string $shift): Builder
     {
-        return $query->when($shift, fn($q) => $q->where('shift', $shift));
+        // Ambil angka jam (0-23) dari kolom `jam`, apa pun formatnya:
+        // 6, '6', '06:00', '06:00:00' semuanya menjadi 6
+        $jam = 'CAST(SUBSTRING(jam, 1, 2) AS UNSIGNED)';
+
+        if ($shift === 'Shift Pagi') {
+            // 06:00 - 16:59
+            return $query->whereRaw("$jam BETWEEN 6 AND 16");
+        }
+
+        // Shift Malam: 17:00 - 23:59 dan 00:00 - 05:59 (melewati tengah malam)
+        return $query->whereRaw("($jam >= 17 OR $jam < 6)");
     }
 
     public function scopeRentangTanggal(Builder $query, ?string $dari, ?string $sampai): Builder
