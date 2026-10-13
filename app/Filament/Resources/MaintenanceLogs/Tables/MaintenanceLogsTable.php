@@ -3,13 +3,14 @@
 namespace App\Filament\Resources\MaintenanceLogs\Tables;
 
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
 
 class MaintenanceLogsTable
 {
@@ -45,6 +46,7 @@ class MaintenanceLogsTable
                     ->disk('public')
                     ->imageHeight(50)
                     ->extraImgAttributes(['loading' => 'lazy'])
+                    ->url(fn($record): ?string => $record->foto_sebelum ? Storage::disk('public')->url($record->foto_sebelum) : null)
                     ->openUrlInNewTab(),
 
                 ImageColumn::make('foto_sesudah')
@@ -52,6 +54,7 @@ class MaintenanceLogsTable
                     ->disk('public')
                     ->imageHeight(50)
                     ->extraImgAttributes(['loading' => 'lazy'])
+                    ->url(fn($record): ?string => $record->foto_sesudah ? Storage::disk('public')->url($record->foto_sesudah) : null)
                     ->openUrlInNewTab(),
 
                 TextColumn::make('created_at')
@@ -82,8 +85,9 @@ class MaintenanceLogsTable
                     ]),
             ])
             ->recordActions([
-                ViewAction::make(),
+                // ViewAction::make(),
                 EditAction::make(),
+                DeleteAction::make()
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

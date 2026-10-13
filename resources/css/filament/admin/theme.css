@@ -4,3 +4,13 @@
 @source '../../../../app/Livewire/**/*';
 @source '../../../../resources/views/filament/**/*';
 @source '../../../../resources/views/livewire/**/*';
+
+
+:root {
+    --radius: 0.75rem;
+}
+
+/* Menyamakan border input & kartu agar tipis dan bersih */
+.fi-ta-content, .fi-section, .fi-fo-field-wrp {
+    border-radius: var(--radius);
+}
