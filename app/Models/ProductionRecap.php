@@ -52,7 +52,7 @@ class ProductionRecap extends Model
     {
         return $query->where('shift', $shift);
     }
-
+	
     public function scopeRentangTanggal(Builder $query, ?string $dari, ?string $sampai): Builder
     {
         return $query
