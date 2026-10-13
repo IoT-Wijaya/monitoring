@@ -48,9 +48,9 @@ class ProductionRecap extends Model
         return $query->when($machineId, fn($q) => $q->where('machine_id', $machineId));
     }
 
-    public function scopeShift(Builder $query, string $shift): Builder
+    public function scopeShift(Builder $query, ?string $shift): Builder
     {
-        return $query->where('shift', $shift);
+        return $query->when($shift, fn($q) => $q->where('shift', $shift));
     }
 	
     public function scopeRentangTanggal(Builder $query, ?string $dari, ?string $sampai): Builder
