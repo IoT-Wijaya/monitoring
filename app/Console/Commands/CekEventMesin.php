@@ -8,7 +8,6 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('app:cek-event-mesin')]
 #[Description('Command description')]
 class CekEventMesin extends Command
 {
