@@ -1,7 +1,7 @@
 {{-- MQTT Inspector — shadcn-inspired UI for Laravel Filament --}}
 <x-filament-panels::page>
     @assets
-    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+    <script src="{{ asset('vendor/mqtt/mqtt.min.js') }}"></script>
     @endassets
 
     <style>
