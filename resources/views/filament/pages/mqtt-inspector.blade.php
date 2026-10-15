@@ -726,11 +726,31 @@
                         Connect broker
                     </button>
 
-                    <button x-show="status !== 'disconnected'" type="button" @click="disconnect()"
-                        class="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:bg-zinc-950 dark:text-red-400">
-                        <x-filament::icon icon="heroicon-o-stop-circle" class="h-4 w-4" />
+
+                    <button
+                        x-show="status !== 'disconnected'"
+                        type="button"
+                        @click="disconnect()"
+                        class="flex w-full items-center justify-center gap-2 rounded-lg
+                            border border-red-200 bg-white px-3 py-2.5
+                            text-sm font-medium text-red-600 shadow-sm
+                            transition-colors duration-200
+                            hover:bg-red-50
+                            focus-visible:outline-none focus-visible:ring-2
+                            focus-visible:ring-red-500 focus-visible:ring-offset-2
+                            dark:border-red-900/60
+                            dark:bg-red-950/30
+                            dark:text-red-400
+                            dark:hover:border-red-800
+                            dark:hover:bg-red-950/60
+                            dark:focus-visible:ring-red-500
+           dark:focus-visible:ring-offset-zinc-950">
+                        <x-filament::icon
+                            icon="heroicon-o-stop-circle"
+                            class="h-4 w-4" />
                         Disconnect
                     </button>
+
 
                     <p class="rounded-lg bg-zinc-50 p-3 text-xs leading-relaxed text-zinc-500 dark:bg-zinc-900">
                         Broker publik dapat diakses siapa saja. Jangan gunakan untuk perintah produksi.
