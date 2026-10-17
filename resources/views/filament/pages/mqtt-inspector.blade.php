@@ -612,16 +612,6 @@
 
         {{-- Header --}}
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                    <x-filament::icon icon="heroicon-o-chat-bubble-left-right"
-                        class="h-5 w-5 text-zinc-700 dark:text-zinc-200" />
-                </div>
-                <div>
-                    <h2 class="text-base font-semibold tracking-tight">MQTT Inspector</h2>
-                    <p class="text-xs text-zinc-500">Live message monitoring</p>
-                </div>
-            </div>
 
             <div class="flex items-center gap-2">
                 <span class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium"
@@ -773,10 +763,11 @@
                         <input type="text" x-model="newSub"
                             @keydown.enter.prevent="addSub()"
                             placeholder="pabrik/+/status"
-                            class="min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950" />
+                            class="min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" />
+
                         <button type="button" @click="addSub()"
                             aria-label="Tambah topic"
-                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900">
                             <x-filament::icon icon="heroicon-o-plus" class="h-4 w-4" />
                         </button>
                     </div>

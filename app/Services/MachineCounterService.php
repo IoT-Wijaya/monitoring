@@ -12,6 +12,16 @@ class MachineCounterService
 {
     private const HARI_PRODUKSI_MULAI = 5;
 
+    // Alat dianggap TIDAK ADA KABAR jika tidak ada pesan langsung lebih dari ini (detik).
+    private const BATAS_OFFLINE_DETIK = 15;
+
+    // Isi topik "status" yang berarti alat pamit / terputus (Last Will).
+    // "0" = Sanding Besar, "OFFLINE" = Sanding Kecil.
+    private const STATUS_OFFLINE = ['0', 'OFFLINE'];
+
+    // Pemantau (mqtt:subscribe) dianggap mati jika denyutnya lebih lama dari ini (detik).
+    private const BATAS_PEMANTAU_DETIK = 20;
+
     private function cacheKey(string $slug, string $field): string
     {
         return "veneer_{$slug}_{$field}";
@@ -34,14 +44,74 @@ class MachineCounterService
         return $nilai ? (int) $nilai : null;
     }
 
-    public function simpanDariMqtt(string $slug, string $jenis, string $pesan): void
+    // -----------------------------------------------------
+    // DENYUT PEMANTAU
+    // Dipanggil berkala oleh command mqtt:subscribe. Dipakai untuk
+    // membedakan "semua alat mati" dari "pemantaunya yang mati".
+    // -----------------------------------------------------
+    public function catatPemantauHidup(): void
     {
-        $sebelumnya = cache()->get($this->cacheKey($slug, 'last_seen'));
-        $sekarang = now()->timestamp;
-        cache()->put($this->cacheKey($slug, 'last_seen'), $sekarang);
+        cache()->put('veneer_pemantau_hidup', now()->timestamp);
+    }
 
-        // Perangkat kembali setelah senyap: mulai pengamatan baru.
-        $baruPulih = $sebelumnya && ($sekarang - $sebelumnya) > 15;
+    public function pemantauHidup(): bool
+    {
+        $nilai = cache()->get('veneer_pemantau_hidup');
+
+        // Belum pernah tercatat (misalnya baru deploy): anggap hidup,
+        // supaya dashboard tidak langsung menuduh pemantau mati.
+        if ($nilai === null) {
+            return true;
+        }
+
+        return (time() - (int) $nilai) <= self::BATAS_PEMANTAU_DETIK;
+    }
+
+    // -----------------------------------------------------
+    // PESAN MASUK DARI MQTT
+    // $retained = true berarti pesan LAMA yang dikirim ulang broker saat
+    // subscriber baru menyala. Itu bukan bukti alat sedang hidup.
+    // -----------------------------------------------------
+    public function simpanDariMqtt(string $slug, string $jenis, string $pesan, bool $retained = false): void
+    {
+        // 1. Perintah buatan dashboard sendiri ikut terbaca karena subscribe "pabrik/#".
+        //    Itu bukan data alat dan tidak boleh dianggap tanda alat hidup.
+        if ($jenis === 'perintah') {
+            return;
+        }
+
+        // 2. Pesan "pamit" (Last Will atau restart terencana): alat terputus SEKARANG.
+        //    last_seen sengaja tidak disentuh, hanya diberi tanda.
+        if ($jenis === 'status' && in_array($pesan, self::STATUS_OFFLINE, true)) {
+            cache()->put($this->cacheKey($slug, 'terputus'), true);
+
+            if (! $retained) {
+                cache()->put($this->cacheKey($slug, 'putus_pada'), now()->timestamp);
+            }
+
+            return;
+        }
+
+        // 3. Kiriman ulang dari broker: pulihkan nilai terakhir saja.
+        //    Tidak menyentuh last_seen, "terakhir berubah", maupun laju produksi.
+        if ($retained) {
+            $this->terapkanNilai($slug, $jenis, $pesan);
+
+            return;
+        }
+
+        // 4. Pesan langsung dari alat = tanda alat hidup.
+        $sebelumnya = cache()->get($this->cacheKey($slug, 'last_seen'));
+        $terputus = (bool) cache()->get($this->cacheKey($slug, 'terputus'), false);
+        $sekarang = now()->timestamp;
+
+        cache()->put($this->cacheKey($slug, 'last_seen'), $sekarang);
+        cache()->forget($this->cacheKey($slug, 'terputus'));
+
+        // Perangkat kembali setelah senyap atau setelah terputus: mulai pengamatan baru.
+        $baruPulih = $sebelumnya
+            && ((($sekarang - $sebelumnya) > self::BATAS_OFFLINE_DETIK) || $terputus);
+
         if ($baruPulih) {
             cache()->put($this->cacheKey($slug, 'amati_mulai'), $sekarang);
         }
@@ -53,15 +123,7 @@ class MachineCounterService
             $this->catatPerubahan($slug, 's2', (int) $pesan);
         }
 
-        match ($jenis) {
-            'jumlah' => cache()->put($this->cacheKey($slug, 'jumlah_s1'), (int) $pesan),
-            'jumlah2' => cache()->put($this->cacheKey($slug, 'jumlah_s2'), (int) $pesan),
-            'kecepatan' => cache()->put($this->cacheKey($slug, 'kecepatan'), (int) $pesan),
-            'ssid' => cache()->put($this->cacheKey($slug, 'ssid'), $pesan),
-            's1_error' => cache()->put($this->cacheKey($slug, 's1_error'), $pesan === '1'),
-            's2_error' => cache()->put($this->cacheKey($slug, 's2_error'), $pesan === '1'),
-            default => null,
-        };
+        $this->terapkanNilai($slug, $jenis, $pesan);
 
         if ($baruPulih && ($machine = Machine::firstWhere('slug', $slug))) {
             try {
@@ -70,6 +132,35 @@ class MachineCounterService
                 report($e); // jangan sampai listener MQTT ikut mati
             }
         }
+    }
+
+    private function terapkanNilai(string $slug, string $jenis, string $pesan): void
+    {
+        match ($jenis) {
+            'jumlah' => cache()->put($this->cacheKey($slug, 'jumlah_s1'), (int) $pesan),
+            'jumlah2' => cache()->put($this->cacheKey($slug, 'jumlah_s2'), (int) $pesan),
+            'kecepatan' => cache()->put($this->cacheKey($slug, 'kecepatan'), (int) $pesan),
+            'ssid' => cache()->put($this->cacheKey($slug, 'ssid'), $pesan),
+            's1_error' => cache()->put($this->cacheKey($slug, 's1_error'), $pesan === '1'),
+            's2_error' => cache()->put($this->cacheKey($slug, 's2_error'), $pesan === '1'),
+            'ip' => cache()->put($this->cacheKey($slug, 'ip'), $pesan),
+            'diag' => $this->simpanDiag($slug, $pesan),
+            default => null,
+        };
+    }
+
+    /** Laporan diagnosa dari ESP32 (JSON). Isinya riwayat gangguan, penyebab restart, dll. */
+    private function simpanDiag(string $slug, string $pesan): void
+    {
+        $data = json_decode($pesan, true);
+
+        if (! is_array($data)) {
+            return; // bukan JSON valid: abaikan, jangan merusak data lama
+        }
+
+        $data['diterima_pada'] = now()->timestamp;
+
+        cache()->put($this->cacheKey($slug, 'diag'), $data);
     }
 
     private function catatPerubahan(string $slug, string $sensor, int $baru): void
@@ -123,15 +214,44 @@ class MachineCounterService
         return array_map(fn($k) => (int) ($nilai[$k] ?? 0), $kunci);
     }
 
+    /**
+     * SATU-SATUNYA tempat status alat dihitung untuk tampilan.
+     *
+     * kondisi:
+     *  ONLINE             pesan langsung dari alat masuk < 15 detik lalu
+     *                     (berarti LAN dan MQTT pasti OK)
+     *  TERPUTUS_MENDADAK  broker memberi tahu alat putus tanpa pamit (Last Will)
+     *  TIDAK_ADA_KABAR    alat diam; penyebabnya TIDAK bisa dipastikan dari sini
+     *  PEMANTAU_MATI      proses mqtt:subscribe berhenti, status alat tidak bisa dipercaya
+     */
     public function bacaStatus(string $slug): array
     {
-        $lastSeen = cache()->get($this->cacheKey($slug, 'last_seen'));
-        $online = $lastSeen && (time() - $lastSeen) <= 15;
+        $lastSeen = $this->lastSeen($slug);
+        $terputus = (bool) cache()->get($this->cacheKey($slug, 'terputus'), false);
+        $pemantauHidup = $this->pemantauHidup();
+
+        $online = $pemantauHidup
+            && $lastSeen
+            && ! $terputus
+            && (time() - $lastSeen) <= self::BATAS_OFFLINE_DETIK;
+
+        $kondisi = match (true) {
+            ! $pemantauHidup => 'PEMANTAU_MATI',
+            $online => 'ONLINE',
+            $terputus => 'TERPUTUS_MENDADAK',
+            default => 'TIDAK_ADA_KABAR',
+        };
+
+        $putusPada = cache()->get($this->cacheKey($slug, 'putus_pada'));
 
         return [
             'jumlah_s1' => $this->jumlahS1($slug),
             'jumlah_s2' => $this->jumlahS2($slug),
             'online' => $online,
+            'kondisi' => $kondisi,
+            'terakhir_terlihat' => $lastSeen,
+            'putus_pada' => $putusPada ? (int) $putusPada : null,
+            'diag' => cache()->get($this->cacheKey($slug, 'diag')),
             'kecepatan' => $online ? (int) cache()->get($this->cacheKey($slug, 'kecepatan'), 0) : 0,
             'ssid' => $online ? cache()->get($this->cacheKey($slug, 'ssid'), 'Unknown WiFi') : 'Disconnected',
             's1_error' => $online && (bool) cache()->get($this->cacheKey($slug, 's1_error'), false),
