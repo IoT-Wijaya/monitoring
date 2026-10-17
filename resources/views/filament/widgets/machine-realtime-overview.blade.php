@@ -4,16 +4,59 @@
         @php
         $isOnline = $statusMesin === 'ONLINE';
 
-        $net = $isOnline
-        ? ['lan' => 'OK', 'mqtt' => 'OK', 'ok' => true]
-        : ['lan' => 'OFF', 'mqtt' => 'NG', 'ok' => false];
+        // Variabel di bawah dikirim oleh class widget dari MachineCounterService::bacaStatus().
+        // Nilai cadangan dipakai selama class widget belum diperbarui.
+        $kondisi = $kondisi ?? ($isOnline ? 'ONLINE' : 'TIDAK_ADA_KABAR');
+        $diag = $diag ?? null;
+        $terakhirTerlihat = $terakhirTerlihat ?? null; // timestamp
 
-        $netColor = $net['ok']
-        ? 'text-emerald-600 dark:text-emerald-400'
-        : 'text-red-500 dark:text-red-400';
-        @endphp
+        // Status jaringan hanya ditulis jika benar-benar DIKETAHUI:
+        // - ONLINE : data sedang masuk lewat MQTT, jadi LAN dan MQTT pasti OK.
+        // - selain itu: alat diam, penyebabnya tidak bisa dipastikan dari dashboard.
+        $net = match ($kondisi) {
+        'ONLINE' => ['lan' => 'OK', 'mqtt' => 'OK', 'warna' => 'text-emerald-600 dark:text-emerald-400'],
+        'PEMANTAU_MATI' => ['lan' => '?', 'mqtt' => '?', 'warna' => 'text-amber-600 dark:text-amber-400'],
+        default => ['lan' => '?', 'mqtt' => '?', 'warna' => 'text-red-500 dark:text-red-400'],
+        };
 
-        <div wire:click="navigateToRekap" class="p-4 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xs transition-colors duration-150 relative overflow-hidden cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/40 group">
+        $labelKondisi = match ($kondisi) {
+        'ONLINE' => 'ONLINE',
+        'TERPUTUS_MENDADAK' => 'TERPUTUS MENDADAK',
+        'PEMANTAU_MATI' => 'PEMANTAU DATA BERHENTI',
+        default => 'TIDAK ADA KABAR',
+        };
+
+        $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakhirTerlihat) : null;
+
+        // Riwayat dari laporan "diag" ESP32 (hanya ditampilkan saat alat online)
+        $namaGangguan = [
+        'KABEL_PUTUS' => 'kabel LAN putus',
+        'TANPA_IP' => 'tidak mendapat IP',
+        'MQTT_NG' => 'broker tidak terjangkau',
+        ];
+        $namaRestart = [
+        'BROWNOUT' => 'listrik drop (BROWNOUT)',
+        'WATCHDOG' => 'alat macet lalu restart otomatis',
+        'PANIC' => 'error program',
+        ];
+
+        $infoGangguan = null;
+        $infoRestart = null;
+
+        if ($kondisi === 'ONLINE' && is_array($diag)) {
+        if (($diag['last_outage_s'] ?? 0) > 0) {
+        $infoGangguan = 'Gangguan terakhir: ' . $diag['last_outage_s'] . ' detik, '
+        . ($namaGangguan[$diag['last_outage_cause'] ?? ''] ?? 'penyebab tidak diketahui');
+        }
+
+        // Penyebab restart hanya relevan jika alat baru menyala (< 24 jam)
+            if (($diag['up_min'] ?? PHP_INT_MAX) < 1440 && isset($namaRestart[$diag['reset'] ?? '' ])) {
+            $infoRestart='Restart terakhir: ' . $namaRestart[$diag['reset']];
+            }
+            }
+            @endphp
+
+            <div wire:click="navigateToRekap" class="p-4 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xs transition-colors duration-150 relative overflow-hidden cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/40 group">
 
             <!-- Bagian Atas: Identitas Mesin & Status Jaringan -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/80 mb-4">
@@ -35,7 +78,7 @@
                 <!-- Status Jaringan -->
                 <div class="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2.5 bg-zinc-50 dark:bg-zinc-800/50 px-3 py-1.5 rounded-md border border-zinc-200/60 dark:border-zinc-800">
                     <span class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Jaringan</span>
-                    <div class="flex items-center gap-2 font-mono text-xs font-bold {{ $netColor }}">
+                    <div class="flex items-center gap-2 font-mono text-xs font-bold {{ $net['warna'] }}">
                         <span class="px-1.5 py-0.5 rounded bg-white dark:bg-zinc-900">LAN: {{ $net['lan'] }}</span>
                         <span class="px-1.5 py-0.5 rounded bg-white dark:bg-zinc-900">MQTT: {{ $net['mqtt'] }}</span>
                     </div>
@@ -83,6 +126,18 @@
 
             </div>
 
+            <!-- Riwayat dari laporan diag ESP32 (hanya muncul jika ada) -->
+            @if($infoGangguan || $infoRestart)
+            <div class="mb-4 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 space-y-0.5">
+                @if($infoGangguan)
+                <div>{{ $infoGangguan }}</div>
+                @endif
+                @if($infoRestart)
+                <div>{{ $infoRestart }}</div>
+                @endif
+            </div>
+            @endif
+
             <!-- Bagian Tombol Reset: 3 baris penuh di mobile, rata kanan di tablet+ -->
             <div class="mb-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end" wire:click.stop>
                 <x-filament::button
@@ -117,18 +172,27 @@
                 </x-filament::button>
             </div>
 
-            <!-- Bagian Bawah: Status Online/Offline & Tautan Rekapitulasi -->
+            <!-- Bagian Bawah: Kondisi alat & Tautan Rekapitulasi -->
             <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    @if($isOnline)
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    @if($kondisi === 'ONLINE')
                     <span class="relative flex h-2.5 w-2.5">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                     </span>
-                    <span class="text-xs font-bold tracking-wide text-emerald-600 dark:text-emerald-400">ONLINE</span>
+                    <span class="text-xs font-bold tracking-wide text-emerald-600 dark:text-emerald-400">{{ $labelKondisi }}</span>
+                    @elseif($kondisi === 'PEMANTAU_MATI')
+                    <span class="inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                    <span class="text-xs font-bold tracking-wide text-amber-600 dark:text-amber-400">{{ $labelKondisi }}</span>
                     @else
                     <span class="inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                    <span class="text-xs font-bold tracking-wide text-red-600 dark:text-red-400">OFFLINE</span>
+                    <span class="text-xs font-bold tracking-wide text-red-600 dark:text-red-400">{{ $labelKondisi }}</span>
+                    @endif
+
+                    @if($kondisi !== 'ONLINE' && $waktuTerlihat)
+                    <span class="text-[11px] text-zinc-500 dark:text-zinc-400">
+                        terakhir terlihat {{ $waktuTerlihat->format('H:i') }} ({{ $waktuTerlihat->diffForHumans() }})
+                    </span>
                     @endif
                 </div>
 
@@ -140,6 +204,6 @@
                 </div>
             </div>
 
-        </div>
+            </div>
     </x-filament::section>
 </x-filament-widgets::widget>
