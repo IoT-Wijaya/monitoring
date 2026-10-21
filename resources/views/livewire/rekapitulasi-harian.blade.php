@@ -91,13 +91,13 @@
             </div>
         </div>
 
-        <!-- Total Counter Badges -->
+        <!-- Total Counter Badges (Dibalik: Masuk pakai $total->keluar, Keluar pakai $total->masuk) -->
         <div class="flex flex-wrap items-center justify-center lg:justify-end gap-2 text-xs font-medium">
             <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700/80 rounded-md text-gray-500 dark:text-gray-400">
-                Masuk: <span class="font-mono font-bold text-gray-800 dark:text-gray-200">{{ number_format((int) $total->masuk) }}</span>
+                Masuk: <span class="font-mono font-bold text-gray-800 dark:text-gray-200">{{ number_format((int) $total->keluar) }}</span>
             </div>
             <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700/80 rounded-md text-gray-500 dark:text-gray-400">
-                Keluar: <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ number_format((int) $total->keluar) }}</span>
+                Keluar: <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ number_format((int) $total->masuk) }}</span>
             </div>
             <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700/80 rounded-md text-gray-500 dark:text-gray-400">
                 <span class="font-mono font-bold text-indigo-600 dark:text-indigo-400">{{ $recaps->total() }}</span> Data Rekap
@@ -105,14 +105,14 @@
         </div>
     </div>
 
-    <!-- RESPONSIVE VIEW: CARD LIST UNTUK MOBILE & TABEL UNTUK DESKTOP -->
+    <!-- RESPONSIVE VIEW -->
     <div>
         @forelse($recaps as $index => $row)
         @php
-        $selisih = $row->sensor2_keluar - $row->sensor1_masuk;
+        // Selisih dibalik: (sensor1_masuk - sensor2_keluar)
+        $selisih = $row->sensor1_masuk - $row->sensor2_keluar;
         $isMalam = $row->shift === 'Shift Malam';
 
-        // Modern Shadcn UI Badge Styles
         $shiftBadgeClass = $isMalam
         ? 'inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200/60 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20'
         : 'inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20';
@@ -132,13 +132,15 @@
                 <div class="text-xs font-semibold text-gray-900 dark:text-gray-100 truncate">{{ $row->machine->nama ?? '-' }}</div>
             </div>
             <div class="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-center">
+                <!-- Kolom Keluar menampilkan sensor1_masuk -->
                 <div class="bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-md">
                     <div class="text-[9px] text-gray-400 uppercase font-semibold">Keluar</div>
-                    <div class="text-[12px] font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($row->sensor2_keluar) }}</div>
+                    <div class="text-[12px] font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($row->sensor1_masuk) }}</div>
                 </div>
+                <!-- Kolom Masuk menampilkan sensor2_keluar -->
                 <div class="bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-md">
                     <div class="text-[9px] text-gray-400 uppercase font-semibold">Masuk</div>
-                    <div class="text-[12px] font-mono font-semibold text-gray-700 dark:text-gray-300">{{ number_format($row->sensor1_masuk) }}</div>
+                    <div class="text-[12px] font-mono font-semibold text-gray-700 dark:text-gray-300">{{ number_format($row->sensor2_keluar) }}</div>
                 </div>
                 <div class="bg-gray-50 dark:bg-gray-800/40 p-1.5 rounded-md">
                     <div class="text-[9px] text-gray-400 uppercase font-semibold">Selisih</div>
@@ -160,7 +162,7 @@
         </div>
         @endforelse
 
-        <!-- TAMPILAN DESKTOP (Clean Shadcn Table as requested) -->
+        <!-- TAMPILAN DESKTOP (Table View) -->
         <div class="hidden md:block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-md overflow-hidden shadow-2xs">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse min-w-[700px]">
@@ -171,6 +173,7 @@
                             <th class="p-4 font-medium">Jam</th>
                             <th class="p-4 font-medium">Nama Mesin</th>
                             <th class="p-4 font-medium">Status Shift</th>
+                            <!-- Header Kolom Dibalik -->
                             <th class="p-4 text-right font-medium">Keluar</th>
                             <th class="p-4 text-right font-medium">Masuk</th>
                             <th class="p-4 text-right font-medium">Selisih</th>
@@ -179,7 +182,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800/60 text-xs">
                         @forelse($recaps as $index => $row)
                         @php
-                        $selisih = $row->sensor2_keluar - $row->sensor1_masuk;
+                        $selisih = $row->sensor1_masuk - $row->sensor2_keluar;
                         $isMalam = $row->shift === 'Shift Malam';
 
                         $shiftBadgeClass = $isMalam
@@ -194,8 +197,10 @@
                             <td class="p-4">
                                 <span class="{{ $shiftBadgeClass }}">{{ $row->shift }}</span>
                             </td>
-                            <td class="p-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($row->sensor2_keluar) }} pcs</td>
-                            <td class="p-4 text-right font-mono font-semibold text-gray-700 dark:text-gray-300">{{ number_format($row->sensor1_masuk) }} pcs</td>
+                            <!-- Keluar diisi dengan nilai sensor1_masuk -->
+                            <td class="p-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">{{ number_format($row->sensor1_masuk) }} pcs</td>
+                            <!-- Masuk diisi dengan nilai sensor2_keluar -->
+                            <td class="p-4 text-right font-mono font-semibold text-gray-700 dark:text-gray-300">{{ number_format($row->sensor2_keluar) }} pcs</td>
                             <td class="p-4 text-right font-mono font-medium">
                                 @if($selisih < 0)
                                     <span class="text-red-600 dark:text-red-400 font-bold">{{ number_format($selisih) }} pcs</span>
