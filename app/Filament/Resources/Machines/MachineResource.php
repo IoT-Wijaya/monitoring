@@ -43,21 +43,31 @@ class MachineResource extends Resource
     {
         return $schema->schema([
             TextInput::make('nama')
+                ->label('Nama Mesin')
                 ->required()
-                ->maxLength(255),
-
+                ->maxLength(255)
+                ->live(onBlur: true)
+                ->required(),
+            TextInput::make('mac_address')
+                ->label('MAC Address ESP32')
+                ->placeholder('Contoh: AA:BB:CC:DD:EE:FF')
+                ->required()
+                ->unique(ignoreRecord: true)
+                ->maxLength(50),
             TextInput::make('slug')
                 ->required()
-                ->maxLength(255)
-                ->unique(ignoreRecord: true)
-                ->alphaDash()
-                ->helperText('Huruf kecil, tanpa spasi. Harus persis sama dengan slug yang diisi di ESP32 (WiFiManager) dan topic MQTT pabrik/{slug}/...'),
-
-            TextInput::make('kode_esp32')
-                ->label("Microcontroller ID")
                 ->required()
                 ->maxLength(255)
-                ->helperText('Kode identifikasi fisik device ESP32.'),
+                ->unique(ignoreRecord: true),
+            TextInput::make('device_type')
+                ->label('Tipe Perangkat')
+                ->default('ESP32')
+                ->maxLength(100),
+
+            TextInput::make('current_version')
+                ->label('Versi Firmware Saat Ini')
+                ->placeholder('v1.0.0')
+                ->maxLength(50),
         ]);
     }
 
@@ -70,9 +80,34 @@ class MachineResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('nama')->searchable(),
-                TextColumn::make('slug')->searchable()->badge(),
-                TextColumn::make('kode_esp32')->searchable()->label("Microcontroller ID"),
+                TextColumn::make('nama')
+                    ->label('Nama Mesin')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('mac_address')
+                    ->label('MAC Address ESP32')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('slug')
+                    ->label('Slug')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('device_type')
+                    ->label('Tipe')
+                    ->searchable()
+                    ->badge(),
+
+                TextColumn::make('current_version')
+                    ->label('Versi Firmware')
+                    ->searchable(),
+
+                TextColumn::make('last_seen_at')
+                    ->label('Terakhir Aktif')
+                    ->dateTime()
+                    ->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->actions([

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Machine;
 use App\Services\DeviceHealthService;
 use Filament\Notifications\Notification;
 use Filament\Widgets\Widget;
@@ -10,7 +11,8 @@ class DeviceHealthOverview extends Widget
 {
     protected string $view = 'filament.widgets.device-health-overview';
 
-    protected static ?string $pollingInterval = null;
+    // Filament v4: properti non-static. Tanpa ini status tidak berubah di layar.
+    protected ?string $pollingInterval = '5s';
 
     // ---- Diisi oleh subclass ----
     protected static string $namaPerangkat = '';
@@ -30,6 +32,18 @@ class DeviceHealthOverview extends Widget
     public bool $mqttOk = false;
     public bool $httpOk = false;
 
+    // ---- State tambahan dari telemetri HMI ----
+    public string $ipAddress = '-';
+    public ?int $httpCode = null;
+    public int $httpStreak = 0;
+    public string $httpOkAgo = '-';
+    public int $lanLost = 0;
+    public int $mqttLost = 0;
+    public string $lastOutage = '-';
+    public string $lastErr = '-';
+    public string $resetReason = '-';
+    public string $sensorMode = '-';
+
     public function mount(): void
     {
         if (static::$deviceKey === '') {
@@ -38,26 +52,52 @@ class DeviceHealthOverview extends Widget
 
         $this->machineNama = static::$namaPerangkat ?: static::$deviceKey;
 
+        // MAC tidak dikirim HMI lewat MQTT, jadi diambil dari database.
+        $machineRecord = Machine::where('slug', static::$deviceKey)->first();
+        if ($machineRecord && ! empty($machineRecord->mac_address)) {
+            $this->macAddress = $machineRecord->mac_address;
+        }
+
         $this->updateData();
     }
+
     public function updateData(): void
     {
-        $status = app(DeviceHealthService::class)->bacaStatus(static::$deviceKey);
+        $s = app(DeviceHealthService::class)->bacaStatus(static::$deviceKey);
 
-        $online = (bool) $status['online'];
-
+        $online = (bool) ($s['online'] ?? false);
         $this->statusMesin = $online ? 'ONLINE' : 'OFFLINE';
-        $this->macAddress = $status['mac'] ?? '-';
-        $this->firmwareVersion = $status['firmware'] ?? '-';
-        $this->freeHeapKb = isset($status['free_heap'])
-            ? round($status['free_heap'] / 1024) . ' KB'
-            : '-';
-        $this->uptimeString = $this->formatUptime($status['uptime'] ?? null);
 
-        // Kalau perangkat belum mengirim status per-layanan, ikut status online.
-        $this->lanOk = (bool) ($status['lan_ok'] ?? $online);
-        $this->mqttOk = (bool) ($status['mqtt_ok'] ?? $online);
-        $this->httpOk = (bool) ($status['http_ok'] ?? $online);
+        if (! empty($s['mac']) && $s['mac'] !== '-') {
+            $this->macAddress = $s['mac'];
+        }
+
+        $this->firmwareVersion = $s['firmware'] ?? '-';
+        $this->freeHeapKb = isset($s['free_heap'])
+            ? round($s['free_heap'] / 1024) . ' KB'
+            : '-';
+        $this->uptimeString = $this->formatUptime($s['uptime'] ?? null);
+
+        $this->lanOk = (bool) ($s['lan_ok'] ?? false);
+        $this->mqttOk = (bool) ($s['mqtt_ok'] ?? false);
+        $this->httpOk = (bool) ($s['http_ok'] ?? false);
+
+        $this->ipAddress = $s['ip'] ?? '-';
+        $this->httpCode = $s['http_code'] ?? null;
+        $this->httpStreak = (int) ($s['http_streak'] ?? 0);
+        $this->httpOkAgo = (isset($s['http_ok_ago']) && $s['http_ok_ago'] >= 0)
+            ? $s['http_ok_ago'] . ' detik lalu'
+            : '-';
+        $this->lanLost = (int) ($s['lan_lost'] ?? 0);
+        $this->mqttLost = (int) ($s['mqtt_lost'] ?? 0);
+        $this->lastErr = $s['last_err'] ?? '-';
+        $this->resetReason = $s['reset'] ?? '-';
+        $this->sensorMode = ($s['sensor'] ?? '') !== '' ? $s['sensor'] : '-';
+
+        $sec = (int) ($s['last_outage_s'] ?? 0);
+        $this->lastOutage = $sec > 0
+            ? intdiv($sec, 60) . ' mnt ' . ($sec % 60) . ' dtk (' . ($s['last_outage_cause'] ?? '-') . ')'
+            : '-';
 
         $terbaru = config('machines.latest_firmware.' . static::$latestFirmwareKey);
         $this->newFirmwareVersion = $terbaru ?? '-';
@@ -80,7 +120,7 @@ class DeviceHealthOverview extends Widget
 
             Notification::make()
                 ->title('Perintah Update Terkirim')
-                ->body("HMI akan memperbarui firmware ke {$this->newFirmwareVersion} dan restart.")
+                ->body("HMI akan memeriksa dan memasang firmware {$this->newFirmwareVersion} jika sedang idle.")
                 ->success()
                 ->send();
         } catch (\Exception $e) {

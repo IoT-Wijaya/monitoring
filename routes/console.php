@@ -17,3 +17,5 @@ Schedule::command('rekap:snapshot-jam')
 Schedule::command('mesin:cek-event')
     ->everyTenSeconds()
     ->withoutOverlapping();
+
+Schedule::command('firmware:sync')->everyFiveMinutes()->withoutOverlapping();

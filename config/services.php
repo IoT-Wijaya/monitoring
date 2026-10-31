@@ -42,4 +42,13 @@ return [
         'bucket' => env('INFLUXDB_BUCKET', 'veneer_data'),
     ],
 
+    'github' => [
+        'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
+        'repo'           => env('GITHUB_REPO'),
+        'token'          => env('GITHUB_TOKEN'),
+    ],
+
+    'device' => [
+        'api_key' => env('DEVICE_API_KEY'),
+    ],
 ];
