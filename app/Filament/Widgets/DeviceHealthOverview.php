@@ -45,10 +45,14 @@ class DeviceHealthOverview extends Widget
             throw new \RuntimeException(static::class . ' belum mengisi $deviceKey.');
         }
 
-        $this->machineNama = static::$namaPerangkat ?: static::$deviceKey;
+        // Satu query untuk nama dan MAC sekaligus.
+        $machineRecord = Machine::where('slug', static::$deviceKey)->first();
+
+        // Prioritas nama: database -> $namaPerangkat di subclass -> slug.
+        $this->machineNama = $machineRecord?->nama
+            ?: (static::$namaPerangkat ?: static::$deviceKey);
 
         // MAC tidak dikirim HMI lewat MQTT, jadi diambil dari database.
-        $machineRecord = Machine::where('slug', static::$deviceKey)->first();
         if ($machineRecord && ! empty($machineRecord->mac_address)) {
             $this->macAddress = $machineRecord->mac_address;
         }
