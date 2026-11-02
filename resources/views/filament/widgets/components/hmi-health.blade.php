@@ -55,12 +55,6 @@ $barisInfo = [
 ['label' => 'Versi Firmware:', 'nilai' => $firmwareVersion, 'kelas' => 'text-zinc-800 dark:text-zinc-200 font-bold'],
 ];
 
-$barisDiag = [
-['label' => 'Gangguan terakhir:', 'nilai' => $lastOutage],
-['label' => 'Error MQTT terakhir:', 'nilai' => $lastErr],
-['label' => 'Alasan reset:', 'nilai' => $resetReason],
-];
-
 $kelasKartu = 'bg-zinc-50/70 dark:bg-zinc-800/30 p-3 rounded-md border border-zinc-200/70 dark:border-zinc-800 text-center';
 $kelasLabelKartu = 'text-[10px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block mb-1';
 @endphp
@@ -120,31 +114,6 @@ $kelasLabelKartu = 'text-[10px] font-medium text-zinc-400 dark:text-zinc-500 upp
             <span class="{{ $b['kelas'] }} font-mono">{{ $b['nilai'] }}</span>
         </div>
         @endforeach
-    </div>
-
-    <!-- Diagnostik: seberapa sering HMI bermasalah -->
-    <div class="space-y-3">
-        <span class="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">Diagnostik sejak HMI menyala</span>
-
-        <div class="grid grid-cols-2 gap-3">
-            <div class="{{ $kelasKartu }}">
-                <span class="{{ $kelasLabelKartu }}">LAN putus</span>
-                <span class="text-xs sm:text-sm font-bold font-mono {{ $lanLost > 0 ? $kuning : 'text-zinc-800 dark:text-zinc-200' }}">{{ $lanLost }}x</span>
-            </div>
-            <div class="{{ $kelasKartu }}">
-                <span class="{{ $kelasLabelKartu }}">MQTT putus</span>
-                <span class="text-xs sm:text-sm font-bold font-mono {{ $mqttLost > 0 ? $kuning : 'text-zinc-800 dark:text-zinc-200' }}">{{ $mqttLost }}x</span>
-            </div>
-        </div>
-
-        <div class="divide-y divide-zinc-100 dark:divide-zinc-800/60 text-xs font-medium">
-            @foreach($barisDiag as $b)
-            <div class="py-2.5 flex items-center justify-between gap-3">
-                <span class="text-zinc-500 dark:text-zinc-400 shrink-0">{{ $b['label'] }}</span>
-                <span class="text-zinc-800 dark:text-zinc-200 font-mono text-right">{{ $b['nilai'] }}</span>
-            </div>
-            @endforeach
-        </div>
     </div>
 
     <!-- Panel OTA: hanya muncul jika HMI online dan ada firmware baru -->

@@ -37,11 +37,6 @@ class DeviceHealthOverview extends Widget
     public ?int $httpCode = null;
     public int $httpStreak = 0;
     public string $httpOkAgo = '-';
-    public int $lanLost = 0;
-    public int $mqttLost = 0;
-    public string $lastOutage = '-';
-    public string $lastErr = '-';
-    public string $resetReason = '-';
     public string $sensorMode = '-';
 
     public function mount(): void
@@ -88,16 +83,7 @@ class DeviceHealthOverview extends Widget
         $this->httpOkAgo = (isset($s['http_ok_ago']) && $s['http_ok_ago'] >= 0)
             ? $s['http_ok_ago'] . ' detik lalu'
             : '-';
-        $this->lanLost = (int) ($s['lan_lost'] ?? 0);
-        $this->mqttLost = (int) ($s['mqtt_lost'] ?? 0);
-        $this->lastErr = $s['last_err'] ?? '-';
-        $this->resetReason = $s['reset'] ?? '-';
         $this->sensorMode = ($s['sensor'] ?? '') !== '' ? $s['sensor'] : '-';
-
-        $sec = (int) ($s['last_outage_s'] ?? 0);
-        $this->lastOutage = $sec > 0
-            ? intdiv($sec, 60) . ' mnt ' . ($sec % 60) . ' dtk (' . ($s['last_outage_cause'] ?? '-') . ')'
-            : '-';
 
         $terbaru = config('machines.latest_firmware.' . static::$latestFirmwareKey);
         $this->newFirmwareVersion = $terbaru ?? '-';
