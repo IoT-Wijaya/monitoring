@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Machine;
 use App\Services\DeviceHealthService;
+use App\Services\FirmwareReleaseService;
 use Filament\Notifications\Notification;
 use Filament\Widgets\Widget;
 
@@ -88,11 +89,18 @@ class DeviceHealthOverview extends Widget
             : '-';
         $this->sensorMode = ($s['sensor'] ?? '') !== '' ? $s['sensor'] : '-';
 
-        $terbaru = config('machines.latest_firmware.' . static::$latestFirmwareKey);
+        $terbaru = app(FirmwareReleaseService::class)->versiTerbaru(static::$latestFirmwareKey);
+
         $this->newFirmwareVersion = $terbaru ?? '-';
+
+        // version_compare: awalan "v" diabaikan, panel muncul hanya bila rilis LEBIH BARU.
         $this->newFirmwareAvailable = $terbaru !== null
             && $this->firmwareVersion !== '-'
-            && $terbaru !== $this->firmwareVersion;
+            && version_compare(
+                ltrim($terbaru, 'vV'),
+                ltrim($this->firmwareVersion, 'vV'),
+                '>'
+            );
     }
 
     public function updateFirmware(): void
