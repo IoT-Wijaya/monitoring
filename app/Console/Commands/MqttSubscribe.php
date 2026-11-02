@@ -29,7 +29,7 @@ class MqttSubscribe extends Command
         $perangkatHmi = [
             'hmi_sanding' => 'sanding-hmi',
         ];
-        $jenisHmi = ['status', 'ip', 'diag'];
+        $jenisHmi = ['status', 'ip', 'diag', 'ota'];
 
         $mqtt = MQTT::connection();
         $this->info('Terhubung ke broker MQTT...');

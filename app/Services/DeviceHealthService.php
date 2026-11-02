@@ -38,6 +38,15 @@ class DeviceHealthService
             if (is_array($diag)) {
                 $data['diag'] = $diag;
             }
+        } elseif ($subTopik === 'ota') {
+            // Laporan progres bersifat sesaat: pesan retained (lama) diabaikan.
+            if (! $retained) {
+                $ota = json_decode($payload, true);
+                if (is_array($ota)) {
+                    $ota['at'] = time();   // kapan server menerima laporan
+                    $data['ota'] = $ota;
+                }
+            }
         }
 
         Cache::forever($this->kunci($deviceKey), $data);
@@ -62,6 +71,7 @@ class DeviceHealthService
             'free_heap'         => $diag['heap'] ?? null,
             'uptime'            => isset($diag['up_min']) ? $diag['up_min'] * 60 : null,
             'ip'                => $data['ip'] ?? ($diag['ip'] ?? '-'),
+            'ota'               => $data['ota'] ?? null,
             // HMI hanya bisa mengirim pesan jika LAN dan MQTT sama-sama hidup
             'lan_ok'            => (bool) $online,
             'mqtt_ok'           => (bool) $online,

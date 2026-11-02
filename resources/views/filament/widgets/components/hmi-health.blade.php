@@ -117,7 +117,31 @@ $kelasLabelKartu = 'text-[10px] font-medium text-zinc-400 dark:text-zinc-500 upp
     </div>
 
     <!-- Panel OTA: hanya muncul jika HMI online dan ada firmware baru -->
-    @if($isOnline && $adaPembaruan)
+    @if($otaBerjalan)
+    <div class="p-3.5 rounded-md bg-amber-500/10 border border-amber-500/20 space-y-2.5">
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
+                <x-filament::loading-indicator class="w-4 h-4" />
+                Memperbarui firmware ke <span class="font-mono">{{ $otaTarget }}</span>
+            </div>
+            <span class="text-[11px] font-mono text-amber-700/80 dark:text-amber-400/80">
+                @if($otaPersen !== null){{ $otaPersen }}% · @endif{{ gmdate('i:s', $otaDetik) }}
+            </span>
+        </div>
+
+        <div class="h-1.5 w-full rounded-full bg-amber-500/20 overflow-hidden">
+            @if($otaPersen !== null)
+            <div class="h-full rounded-full bg-amber-500 transition-all duration-500" style="width: {{ $otaPersen }}%"></div>
+            @else
+            <div class="h-full w-full rounded-full bg-amber-500 animate-pulse"></div>
+            @endif
+        </div>
+
+        <div class="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+            {{ $otaPesan ?: 'HMI sedang mengunduh dan memasang firmware, lalu restart. Jangan matikan perangkat.' }}
+        </div>
+    </div>
+    @elseif($isOnline && $adaPembaruan)
     <div class="p-3.5 rounded-md bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div class="flex items-center gap-3">
             <div class="text-amber-600 dark:text-amber-400 shrink-0">
@@ -131,16 +155,7 @@ $kelasLabelKartu = 'text-[10px] font-medium text-zinc-400 dark:text-zinc-500 upp
             </div>
         </div>
 
-        <x-filament::button
-            color="warning"
-            size="xs"
-            icon="heroicon-m-arrow-path"
-            wire:click="updateFirmware"
-            wire:confirm="Yakin update firmware ke {{ $targetVersion }}? Mesin akan restart."
-            wire:loading.attr="disabled"
-            class="w-full sm:w-auto font-medium shadow-2xs">
-            Update Sekarang
-        </x-filament::button>
+        {{ $this->updateFirmwareAction }}
     </div>
     @endif
 </div>
