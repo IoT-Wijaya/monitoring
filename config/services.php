@@ -43,12 +43,12 @@ return [
     ],
 
     'github' => [
-        'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
         'repo'           => env('GITHUB_REPO'),
         'token'          => env('GITHUB_TOKEN'),
     ],
 
     'device' => [
         'api_key' => env('DEVICE_API_KEY'),
+        'master_secret' => env('DEVICE_MASTER_SECRET'),
     ],
 ];
