@@ -18,7 +18,7 @@ return new class extends Migration
 
         // 2) Ubah struktur dulu: boleh NULL
         Schema::table('machines', function (Blueprint $table) {
-            $table->string('mac_address', 17)->nullable()->change();
+            $table->string('mac_address', 255)->nullable()->change();
         });
 
         // 3) Baru kosongkan data acak lama
