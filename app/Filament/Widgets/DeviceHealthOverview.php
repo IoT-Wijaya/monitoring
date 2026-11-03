@@ -29,7 +29,7 @@ class DeviceHealthOverview extends Widget implements HasActions, HasSchemas
     // ---- Diisi oleh subclass ----
     protected static string $namaPerangkat = '';
     protected static string $deviceKey = '';
-    protected static string $latestFirmwareKey = 'hmi';
+    protected static string $deviceType = 'input-display';
 
     // ---- State yang dipakai Blade ----
     public string $machineNama = '-';
@@ -103,7 +103,7 @@ class DeviceHealthOverview extends Widget implements HasActions, HasSchemas
             : '-';
         $this->sensorMode = ($s['sensor'] ?? '') !== '' ? $s['sensor'] : '-';
 
-        $terbaru = app(FirmwareReleaseService::class)->versiTerbaru(static::$latestFirmwareKey);
+        $terbaru = app(FirmwareReleaseService::class)->versiTerbaru(static::$deviceType);
         $this->newFirmwareVersion = $terbaru ?? '-';
         $this->newFirmwareAvailable = $terbaru !== null
             && $this->firmwareVersion !== '-'
