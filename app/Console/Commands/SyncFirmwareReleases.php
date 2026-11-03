@@ -4,86 +4,79 @@ namespace App\Console\Commands;
 
 use App\Jobs\ComputeFirmwareChecksum;
 use App\Models\FirmwareRelease;
-use Illuminate\Console\Attributes\Description;
-use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
-#[Signature('firmware:sync {--limit=30 : Jumlah release terbaru yang dicek}')]
-#[Description('Ambil release firmware terbaru dari GitHub')]
 class SyncFirmwareReleases extends Command
 {
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    protected $signature = 'firmware:sync';
+    protected $description = 'Salin rilis firmware dari GitHub ke tabel firmware_releases';
+
+    public function handle(): int
     {
         $repo = config('services.github.repo');
+        $prefixes = (array) config('services.github.tag_prefixes', []);
 
-        if (!$repo) {
-            $this->error('GITHUB_REPO belum diisi di .env');
+        if (! $repo || $prefixes === []) {
+            $this->error('GITHUB_REPO atau GITHUB_TAG_PREFIX belum diisi.');
             return self::FAILURE;
         }
 
-        $request = Http::acceptJson()->timeout(20);
+        // Awalan terpanjang dicek lebih dulu, supaya "counter-sanding-besar"
+        // tidak salah masuk ke "counter-sanding".
+        usort($prefixes, fn($a, $b) => strlen($b) <=> strlen($a));
+
+        $request = Http::timeout(10)->acceptJson()
+            ->withHeaders(['X-GitHub-Api-Version' => '2022-11-28']);
 
         if ($token = config('services.github.token')) {
             $request = $request->withToken($token);
         }
 
-        $response = $request->get("https://api.github.com/repos/{$repo}/releases", [
-            'per_page' => (int) $this->option('limit'),
-        ]);
+        $res = $request->get("https://api.github.com/repos/{$repo}/releases", ['per_page' => 50]);
 
-        if ($response->failed()) {
-            $this->error("GitHub API gagal: HTTP {$response->status()}");
+        if (! $res->successful()) {
+            $this->error('GitHub menjawab HTTP ' . $res->status());
             return self::FAILURE;
         }
 
-        $new = 0;
-
-        foreach ($response->json() as $release) {
-            // Lewati draft dan prerelease
-            if (($release['draft'] ?? false) || ($release['prerelease'] ?? false)) {
+        foreach ($res->json() as $rilis) {
+            if (($rilis['draft'] ?? false) || ($rilis['prerelease'] ?? false)) {
                 continue;
             }
 
-            $tag = (string) ($release['tag_name'] ?? '');
+            $tag = $rilis['tag_name'] ?? '';
 
-            if (!preg_match('/^(?<device>[a-z0-9-]+)-(?<version>v\d[\d.]*)$/i', $tag, $m)) {
+            // Cari awalan yang cocok (yang terpanjang menang).
+            $deviceType = collect($prefixes)->first(
+                fn($p) => str_starts_with(strtolower($tag), strtolower($p))
+            );
+
+            if (! $deviceType || ! preg_match('/v?\d+(?:\.\d+)+/i', $tag, $m)) {
                 continue;
             }
 
-            $asset = collect($release['assets'] ?? [])
-                ->first(fn($a) => ($a['name'] ?? '') === "{$tag}.bin");
+            $bin = collect($rilis['assets'] ?? [])
+                ->first(fn($a) => str_ends_with(strtolower($a['name'] ?? ''), '.bin'));
 
-            if (!$asset) {
+            if (! $bin) {
+                $this->warn("{$tag}: tidak ada file .bin, dilewati.");
                 continue;
             }
 
-            // Sudah ada: jangan diutak-atik (menjaga is_active dan checksum)
-            if (FirmwareRelease::where('device_type', $m['device'])
-                ->where('version', $m['version'])->exists()
-            ) {
-                continue;
+            $firmware = FirmwareRelease::updateOrCreate(
+                ['device_type' => $deviceType, 'version' => $m[0]],
+                [
+                    'download_url' => $bin['browser_download_url'],
+                    'released_at'  => $rilis['published_at'] ?? now(),
+                ]
+            );
+
+            if (blank($firmware->checksum_sha256)) {
+                ComputeFirmwareChecksum::dispatch($firmware->id);
+                $this->info("[{$deviceType}] {$m[0]}: baru, checksum diproses.");
             }
-
-            $firmware = FirmwareRelease::create([
-                'device_type'     => $m['device'],
-                'version'         => $m['version'],
-                'download_url'    => $asset['browser_download_url'],
-                'release_notes'   => $release['body'] ?? null,
-                'checksum_sha256' => null,
-                'is_active'       => false, // gerbang persetujuan
-                'released_at'     => $release['published_at'] ?? now(),
-            ]);
-
-            ComputeFirmwareChecksum::dispatch($firmware->id);
-            $new++;
-            $this->info("Baru: {$m['device']} {$m['version']}");
         }
-
-        $this->info("Selesai. {$new} release baru.");
 
         return self::SUCCESS;
     }

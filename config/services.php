@@ -45,6 +45,10 @@ return [
     'github' => [
         'repo'           => env('GITHUB_REPO'),
         'token'          => env('GITHUB_TOKEN'),
+        'tag_prefixes' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('GITHUB_TAG_PREFIX', ''))
+        ))),
     ],
 
     'device' => [
