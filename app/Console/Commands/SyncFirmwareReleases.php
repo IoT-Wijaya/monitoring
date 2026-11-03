@@ -72,6 +72,12 @@ class SyncFirmwareReleases extends Command
                 ]
             );
 
+            // Hanya rilis yang baru dibuat yang diaktifkan otomatis.
+            // Rilis lama yang sengaja dinonaktifkan manual tidak diubah.
+            if ($firmware->wasRecentlyCreated) {
+                $firmware->update(['is_active' => true]);
+            }
+
             if (blank($firmware->checksum_sha256)) {
                 ComputeFirmwareChecksum::dispatch($firmware->id);
                 $this->info("[{$deviceType}] {$m[0]}: baru, checksum diproses.");
