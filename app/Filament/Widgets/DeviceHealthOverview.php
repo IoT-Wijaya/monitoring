@@ -28,8 +28,9 @@ class DeviceHealthOverview extends Widget implements HasActions, HasSchemas
 
     // ---- Diisi oleh subclass ----
     protected static string $namaPerangkat = '';
-    protected static string $deviceKey = '';
-    protected static string $deviceType = 'input-display';
+    protected static string $deviceKey = '';     // kunci cache dan MQTT, mis. "sanding-hmi"
+    protected static string $machineSlug = '';   // slug baris HMI di tabel machines, mis. "hmi_sanding"
+    protected static string $deviceType = '';    // harus sama dengan DEVICE_TYPE di config.h
 
     // ---- State yang dipakai Blade ----
     public string $machineNama = '-';
@@ -63,15 +64,30 @@ class DeviceHealthOverview extends Widget implements HasActions, HasSchemas
             throw new \RuntimeException(static::class . ' belum mengisi $deviceKey.');
         }
 
-        $machineRecord = Machine::where('slug', static::$deviceKey)->first();
+        $this->machineNama = static::$namaPerangkat ?: static::$deviceKey;
+        $this->muatDataMesin();
+        $this->updateData();
+    }
 
-        $this->machineNama = $machineRecord?->nama ?: static::$deviceKey;
+    /**
+     * Nama dan MAC dari tabel machines. Dipanggil lagi saat polling
+     * selama MAC masih kosong, jadi data baru langsung terbaca.
+     */
+    private function muatDataMesin(): void
+    {
+        $mesin = Machine::where('slug', static::$machineSlug ?: static::$deviceKey)->first();
 
-        if ($machineRecord && ! empty($machineRecord->mac_address)) {
-            $this->macAddress = $machineRecord->mac_address;
+        if (! $mesin) {
+            return;
         }
 
-        $this->updateData();
+        if (! empty($mesin->nama)) {
+            $this->machineNama = $mesin->nama;
+        }
+
+        if (! empty($mesin->mac_address)) {
+            $this->macAddress = strtoupper($mesin->mac_address);
+        }
     }
 
     public function updateData(): void
@@ -81,8 +97,9 @@ class DeviceHealthOverview extends Widget implements HasActions, HasSchemas
         $online = (bool) ($s['online'] ?? false);
         $this->statusMesin = $online ? 'ONLINE' : 'OFFLINE';
 
-        if (! empty($s['mac']) && $s['mac'] !== '-') {
-            $this->macAddress = $s['mac'];
+        // Selama MAC belum terisi, coba baca lagi dari database.
+        if ($this->macAddress === '-') {
+            $this->muatDataMesin();
         }
 
         $this->firmwareVersion = $s['firmware'] ?? '-';
