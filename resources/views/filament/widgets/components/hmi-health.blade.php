@@ -91,40 +91,40 @@ $kelasLabelKartu = 'text-[10px] font-medium text-zinc-400 dark:text-zinc-500 upp
     <div class="grid grid-cols-2 gap-3">
         <div class="{{ $kelasKartu }}">
             <span class="{{ $kelasLabelKartu }}">Uptime</span>
-            <span class="text-xs sm:text-sm font-bold font-mono text-zinc-800 dark:text-zinc-200">{{ $uptimeString }}</span>
+            <span class="text-xs leading-relaxed tracking-wide font-bold text-zinc-800 dark:text-zinc-200">{{ $uptimeString }}</span>
         </div>
         <div class="{{ $kelasKartu }}">
             <span class="{{ $kelasLabelKartu }}">Free Heap (RAM)</span>
-            <span class="text-xs sm:text-sm font-bold font-mono text-zinc-800 dark:text-zinc-200">{{ $freeHeapKb }}</span>
+            <span class="text-xs leading-relaxed tracking-wide font-bold text-zinc-800 dark:text-zinc-200">{{ $freeHeapKb }}</span>
         </div>
     </div>
 
-    <!-- Status koneksi: LAN, MQTT, HTTP -->
+    <!-- Status koneksi & Info -->
     <div class="divide-y divide-zinc-100 dark:divide-zinc-800/60 text-xs font-medium">
         @foreach($barisStatus as $b)
         <div class="py-2.5 flex items-center justify-between">
             <span class="text-zinc-500 dark:text-zinc-400">{{ $b['label'] }}</span>
-            <span class="{{ $b['kelas'] }} font-mono">{{ $b['teks'] }}</span>
+            <span class="{{ $b['kelas'] }} leading-relaxed tracking-wide">{{ $b['teks'] }}</span>
         </div>
         @endforeach
 
         @foreach($barisInfo as $b)
         <div class="py-2.5 flex items-center justify-between">
             <span class="text-zinc-500 dark:text-zinc-400">{{ $b['label'] }}</span>
-            <span class="{{ $b['kelas'] }} font-mono">{{ $b['nilai'] }}</span>
+            <span class="{{ $b['kelas'] }} leading-relaxed tracking-wide">{{ $b['nilai'] }}</span>
         </div>
         @endforeach
     </div>
 
-    <!-- Panel OTA: hanya muncul jika HMI online dan ada firmware baru -->
+    <!-- Panel OTA & Firmware Update -->
     @if($otaBerjalan)
     <div class="p-3.5 rounded-md bg-amber-500/10 border border-amber-500/20 space-y-2.5">
         <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 text-xs font-bold text-amber-800 dark:text-amber-300">
                 <x-filament::loading-indicator class="w-4 h-4" />
-                Memperbarui firmware ke <span class="font-mono">{{ $otaTarget }}</span>
+                Memperbarui firmware ke <span class="leading-relaxed tracking-wide">{{ $otaTarget }}</span>
             </div>
-            <span class="text-[11px] font-mono text-amber-700/80 dark:text-amber-400/80">
+            <span class="text-[11px] leading-relaxed tracking-wide text-amber-700/80 dark:text-amber-400/80">
                 @if($otaPersen !== null){{ $otaPersen }}% · @endif{{ gmdate('i:s', $otaDetik) }}
             </span>
         </div>
@@ -151,7 +151,7 @@ $kelasLabelKartu = 'text-[10px] font-medium text-zinc-400 dark:text-zinc-500 upp
             </div>
             <div>
                 <div class="text-xs font-bold text-amber-800 dark:text-amber-300">Pembaruan Firmware Tersedia!</div>
-                <div class="text-[11px] text-amber-700/80 dark:text-amber-400/80">Versi baru <span class="font-mono font-bold">{{ $targetVersion }}</span> siap diinstal.</div>
+                <div class="text-[11px] text-amber-700/80 dark:text-amber-400/80">Versi baru <span class="leading-relaxed tracking-wide font-bold">{{ $targetVersion }}</span> siap diinstal.</div>
             </div>
         </div>
 

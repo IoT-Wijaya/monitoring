@@ -6,6 +6,7 @@ use App\Models\Machine;
 use App\Services\DeviceHealthService;
 use App\Services\MachineCounterService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use PhpMqtt\Client\Facades\MQTT;
 
 class MqttSubscribe extends Command
@@ -63,9 +64,22 @@ class MqttSubscribe extends Command
 
             // Jalur kesehatan perangkat HMI: dicegat sebelum whitelist mesin.
             if (isset($perangkatHmi[$slug])) {
+                $deviceKey = $perangkatHmi[$slug];
+
+                // "aktif" = STATE, bukan tanda hidup: pesan retained tetap dipakai.
+                if ($jenis === 'aktif') {
+                    $this->simpanItemAktif($deviceKey, $message);
+                    return;
+                }
+
+                // HMI mati mendadak (LWT mengirim status = 0): item aktif tidak valid lagi.
+                if ($jenis === 'status' && trim($message) === '0') {
+                    Cache::forget("hmi:{$deviceKey}:aktif");
+                }
+
                 if (in_array($jenis, $jenisHmi, true)) {
                     $this->info("[HMI] {$slug}/{$jenis}" . ($retained ? ' (retained)' : ''));
-                    $health->simpanPesan($perangkatHmi[$slug], $jenis, $message, $retained);
+                    $health->simpanPesan($deviceKey, $jenis, $message, $retained);
                 }
                 return;
             }
@@ -84,5 +98,25 @@ class MqttSubscribe extends Command
         $mqtt->loop();
 
         return self::SUCCESS;
+    }
+    private function simpanItemAktif(string $deviceKey, string $message): void
+    {
+        $key = "hmi:{$deviceKey}:aktif";
+        $message = trim($message);
+
+        if ($message === '') {
+            Cache::forget($key);
+            $this->info('[HMI] aktif: kosong (tidak ada sanding)');
+            return;
+        }
+
+        $data = json_decode($message, true);
+        if (! is_array($data)) {
+            $this->warn("[HMI] aktif: JSON tidak valid: {$message}");
+            return;
+        }
+
+        Cache::put($key, $data, now()->addHours(12));
+        $this->info('[HMI] aktif: ' . ($data['barang'] ?? '-') . ' / ' . ($data['sisi'] ?? '-'));
     }
 }
