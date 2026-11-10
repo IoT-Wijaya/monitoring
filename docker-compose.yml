@@ -97,8 +97,6 @@
                 MARIADB_ROOT_PASSWORD: monitoring_wijaya21
                 MARIADB_USER: wijayapl_monitoring
                 MARIADB_PASSWORD: monitoring_wijaya21
-            ports:
-                - "3306:3306"
             volumes:
                 - mysql_data:/var/lib/mysql
             networks:

@@ -17,22 +17,30 @@
         <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 flex-1">
 
             <!-- Date Range Input -->
-            <div class="relative w-full sm:w-auto sm:min-w-[240px]" x-data x-init="
-                flatpickr($refs.dateRange, {
-                    mode: 'range',
-                    dateFormat: 'Y-m-d',
-                    altInput: true,
-                    altFormat: 'd-m-Y',
-                    conjunction: ' to ',
-                    defaultDate: ['{{ $tanggalDari }}', '{{ $tanggalSampai }}'],
-                    onChange: function(selectedDates, dateStr, instance) {
-                        if(selectedDates.length === 2) {
-                            @this.set('tanggalDari', instance.formatDate(selectedDates[0], 'Y-m-d'));
-                            @this.set('tanggalSampai', instance.formatDate(selectedDates[1], 'Y-m-d'));
-                        }
-                    }
-                })
-            ">
+            <div class="relative w-full sm:w-auto sm:min-w-[240px]"
+                wire:ignore
+                x-data="{
+                    fp: null,
+                    init() {
+                        this.fp = flatpickr(this.$refs.dateRange, {
+                            mode: 'range',
+                            dateFormat: 'Y-m-d',
+                            altInput: true,
+                            altFormat: 'd-m-Y',
+                            locale: { rangeSeparator: ' s/d ' },
+                            defaultDate: [$wire.tanggalDari, $wire.tanggalSampai],
+                            onChange: (dates, str, instance) => {
+                                if (dates.length === 2) {
+                                    // false = jangan kirim request dulu; request dikirim sekali oleh set kedua
+                                    $wire.$set('tanggalDari', instance.formatDate(dates[0], 'Y-m-d'), false);
+                                    $wire.$set('tanggalSampai', instance.formatDate(dates[1], 'Y-m-d'));
+                                }
+                            },
+                        });
+                    },
+                    destroy() { this.fp?.destroy(); },
+                }"
+                @reset-date-range.window="fp.setDate([$event.detail.dari, $event.detail.sampai], false)">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                     <i class="fa-regular fa-calendar text-xs"></i>
                 </div>
