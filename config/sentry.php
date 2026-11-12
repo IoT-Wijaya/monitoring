@@ -21,7 +21,7 @@ return [
     'release' => env('SENTRY_RELEASE'),
 
     // When left empty or `null` the Laravel environment will be used (usually discovered from `APP_ENV` in your `.env`)
-    'environment' => env('SENTRY_ENVIRONMENT'),
+    'environment' => env('SENTRY_ENVIRONMENT', env('APP_ENV', 'production')),
 
     // Override the organization ID used for trace continuation checks.
     'org_id' => env('SENTRY_ORG_ID') === null ? null : (int) env('SENTRY_ORG_ID'),
@@ -42,7 +42,7 @@ return [
     'enable_logs' => env('SENTRY_ENABLE_LOGS', false),
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#enable_metrics
-    'enable_metrics' => env('SENTRY_ENABLE_METRICS', true),
+    'enable_metrics' => env('SENTRY_ENABLE_METRICS', false),
 
     // @see: https://docs.sentry.io/platforms/php/guides/laravel/configuration/options/#log_flush_threshold
     'log_flush_threshold' => env('SENTRY_LOG_FLUSH_THRESHOLD') === null ? null : (int) env('SENTRY_LOG_FLUSH_THRESHOLD'),
@@ -81,7 +81,7 @@ return [
 
         // Capture SQL query bindings (parameters) in SQL query breadcrumbs, ignored when `data_collection` is set
         // This option will be migrated to `data_collection.database_query_data` in the next major version
-        'sql_bindings' => env('SENTRY_BREADCRUMBS_SQL_BINDINGS_ENABLED', true),
+        'sql_bindings' => env('SENTRY_BREADCRUMBS_SQL_BINDINGS_ENABLED', false),
 
         // Capture queue job information as breadcrumbs
         'queue_info' => env('SENTRY_BREADCRUMBS_QUEUE_INFO_ENABLED', true),

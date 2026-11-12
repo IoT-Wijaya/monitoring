@@ -94,10 +94,10 @@
             container_name: monitoring_db
             restart: unless-stopped
             environment:
-            MARIADB_DATABASE: ${DB_DATABASE}
-            MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-            MARIADB_USER: ${DB_USERNAME}
-            MARIADB_PASSWORD: ${DB_PASSWORD}
+                MARIADB_DATABASE: ${DB_DATABASE}
+                MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+                MARIADB_USER: ${DB_USERNAME}
+                MARIADB_PASSWORD: ${DB_PASSWORD}
             volumes:
                 - mysql_data:/var/lib/mysql
             networks:

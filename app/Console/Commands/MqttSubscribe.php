@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Machine;
 use App\Services\DeviceHealthService;
 use App\Services\MachineCounterService;
+use App\Services\MqttLoggingService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use PhpMqtt\Client\Facades\MQTT;
@@ -13,27 +14,36 @@ use Throwable;
 class MqttSubscribe extends Command
 {
     protected $signature = 'mqtt:subscribe';
-    protected $description = 'Mendengarkan data MQTT dari semua ESP32 (multi-mesin) dan kesehatan perangkat HMI';
 
-    public function handle(MachineCounterService $counter, DeviceHealthService $health): int
-    {
-        // TITIK 3: Bungkus seluruh proses koneksi & loop untuk menangkap error fatal (broker/DB down)
+    protected $description = 'Mendengarkan data MQTT dari semua ESP32 dan kesehatan HMI';
+
+    public function handle(
+        MachineCounterService $counter,
+        DeviceHealthService $health,
+        MqttLoggingService $logger
+    ): int {
         try {
             $validSlugs = Machine::pluck('slug')->all();
 
             $perangkatHmi = [
                 'hmi_sanding' => 'sanding-hmi',
             ];
+
             $jenisHmi = ['status', 'ip', 'diag', 'ota'];
 
             $mqtt = MQTT::connection();
+
             $this->info('Terhubung ke broker MQTT...');
 
             $counter->catatPemantauHidup();
+
             $terakhirDenyut = time();
 
             $mqtt->registerLoopEventHandler(
-                function ($client, float $elapsed) use ($counter, &$terakhirDenyut) {
+                function ($client, float $elapsed) use (
+                    $counter,
+                    &$terakhirDenyut
+                ) {
                     if (time() - $terakhirDenyut >= 5) {
                         $terakhirDenyut = time();
                         $counter->catatPemantauHidup();
@@ -41,122 +51,189 @@ class MqttSubscribe extends Command
                 }
             );
 
-            $mqtt->subscribe('pabrik/#', function (string $topic, string $message, bool $retained = false) use ($counter, $health, $validSlugs, $perangkatHmi, $jenisHmi) {
-                // TITIK 1: Tangkap error per pesan masuk agar 1 pesan rusak tidak mematikan seluruh worker
-                try {
-                    $segments = explode('/', $topic);
+            $mqtt->subscribe(
+                'pabrik/#',
+                function (
+                    string $topic,
+                    string $message,
+                    bool $retained = false
+                ) use (
+                    $counter,
+                    $health,
+                    $logger,
+                    $validSlugs,
+                    $perangkatHmi,
+                    $jenisHmi
+                ) {
+                    $slug = null;
+                    $jenis = null;
+                    $deviceKey = null;
 
-                    if (count($segments) < 3) {
-                        return;
-                    }
+                    try {
+                        $segments = explode('/', $topic);
 
-                    [, $slug, $jenis] = $segments;
-
-                    // Jalur kesehatan perangkat HMI
-                    if (isset($perangkatHmi[$slug])) {
-                        $deviceKey = $perangkatHmi[$slug];
-
-                        if ($jenis === 'aktif') {
-                            $this->simpanItemAktif($deviceKey, $message);
+                        if (count($segments) < 3) {
                             return;
                         }
 
-                        if ($jenis === 'status' && trim($message) === '0') {
-                            Cache::forget("hmi:{$deviceKey}:aktif");
+                        [, $slug, $jenis] = $segments;
+
+                        // HMI
+                        if (isset($perangkatHmi[$slug])) {
+                            $deviceKey = $perangkatHmi[$slug];
+
+                            if ($jenis === 'aktif') {
+                                $this->simpanItemAktif(
+                                    $deviceKey,
+                                    $message,
+                                    $logger
+                                );
+
+                                return;
+                            }
+
+                            if (
+                                $jenis === 'status'
+                                && trim($message) === '0'
+                            ) {
+                                Cache::forget("hmi:{$deviceKey}:aktif");
+                            }
+
+                            if (in_array($jenis, $jenisHmi, true)) {
+                                $this->info(
+                                    "[HMI] {$slug}/{$jenis}"
+                                        . ($retained ? ' (retained)' : '')
+                                );
+
+                                $health->simpanPesan(
+                                    $deviceKey,
+                                    $jenis,
+                                    $message,
+                                    $retained
+                                );
+                            }
+
+                            return;
                         }
 
-                        if (in_array($jenis, $jenisHmi, true)) {
-                            $this->info("[HMI] {$slug}/{$jenis}" . ($retained ? ' (retained)' : ''));
-                            $health->simpanPesan($deviceKey, $jenis, $message, $retained);
+                        // Validasi mesin ESP32
+                        if (! in_array($slug, $validSlugs, true)) {
+                            return;
                         }
-                        return;
+
+                        $this->info(
+                            "[MQTT IN] mesin={$slug} "
+                                . "jenis={$jenis} pesan={$message}"
+                                . ($retained ? ' (retained)' : '')
+                        );
+
+                        $counter->simpanDariMqtt(
+                            $slug,
+                            $jenis,
+                            $message,
+                            $retained
+                        );
+                    } catch (Throwable $e) {
+                        $logger->reportException(
+                            $e,
+                            'mqtt_message_error',
+                            [
+                                'topic' => $topic,
+                                'machine_slug' => $slug,
+                                'message_type' => $jenis,
+                                'device_key' => $deviceKey,
+                                'payload' => mb_substr($message, 0, 4000),
+                                'payload_truncated' => mb_strlen($message) > 4000,
+                                'retained' => $retained,
+                                'timestamp' => now()->toIso8601String(),
+                            ]
+                        );
+
+                        $this->error(
+                            "[MQTT ERROR] {$topic}: {$e->getMessage()}"
+                        );
                     }
-
-                    // Lewati diam-diam kalau slug bukan milik mesin ESP32 terdaftar
-                    if (! in_array($slug, $validSlugs, true)) {
-                        return;
-                    }
-
-                    $tanda = $retained ? ' (retained)' : '';
-                    $this->info("[MQTT IN] mesin={$slug} jenis={$jenis} pesan={$message}{$tanda}");
-
-                    $counter->simpanDariMqtt($slug, $jenis, $message, $retained);
-                } catch (Throwable $e) {
-                    $this->laporSentry($e, 'mqtt_message_error', [
-                        'topic' => $topic,
-                        'payload' => $message,
-                        'retained' => $retained,
-                    ]);
-                    $this->error("[MQTT ERROR] Gagal memproses topik {$topic}: " . $e->getMessage());
                 }
-            });
+            );
 
             $mqtt->loop();
 
             return self::SUCCESS;
         } catch (Throwable $e) {
-            $this->laporSentry($e, 'mqtt_connection_fatal', [
-                'broker_host' => config('mqtt-client.connections.default.host'),
-            ]);
-            $this->error('[MQTT FATAL] Koneksi broker/loop terputus: ' . $e->getMessage());
+            $logger->reportException(
+                $e,
+                'mqtt_connection_fatal',
+                [
+                    'broker_host' => config(
+                        'mqtt-client.connections.default.host'
+                    ),
+                    'environment' => app()->environment(),
+                    'php_version' => PHP_VERSION,
+                    'timestamp' => now()->toIso8601String(),
+                ]
+            );
 
-            // Kembalikan FAILURE agar Docker restart policy otomatis menyalakan ulang worker
+            $this->error(
+                '[MQTT FATAL] ' . $e->getMessage()
+            );
+
             return self::FAILURE;
         }
     }
 
-    private function simpanItemAktif(string $deviceKey, string $message): void
-    {
+    /**
+     * Menyimpan informasi aktivitas HMI.
+     */
+    private function simpanItemAktif(
+        string $deviceKey,
+        string $message,
+        MqttLoggingService $logger
+    ): void {
         $key = "hmi:{$deviceKey}:aktif";
+
         $message = trim($message);
 
         if ($message === '') {
             Cache::forget($key);
+
             $this->info('[HMI] aktif: kosong (tidak ada sanding)');
+
             return;
         }
 
         $data = json_decode($message, true);
+
         if (! is_array($data)) {
-            $this->warn("[HMI] aktif: JSON tidak valid: {$message}");
+            $logger->reportWarning(
+                "HMI [{$deviceKey}] mengirim JSON aktif tidak valid",
+                'hmi_invalid_json',
+                [
+                    'device_key' => $deviceKey,
+                    'payload' => mb_substr($message, 0, 4000),
+                    'payload_truncated' => mb_strlen($message) > 4000,
+                    'json_error' => json_last_error_msg(),
+                    'timestamp' => now()->toIso8601String(),
+                ]
+            );
 
-            // TITIK 2: Laporkan payload JSON rusak dari HMI ke Sentry sebagai warning
-            if (app()->bound('sentry')) {
-                \Sentry\withScope(function (\Sentry\State\Scope $scope) use ($deviceKey, $message) {
-                    $scope->setTag('service', 'mqtt-worker');
-                    $scope->setLevel(\Sentry\Severity::warning());
-                    $scope->setContext('hmi_payload', [
-                        'device_key' => $deviceKey,
-                        'raw_message' => $message,
-                    ]);
-                    \Sentry\captureMessage("HMI [{$deviceKey}] mengirim JSON aktif tidak valid");
-                });
-                \Sentry\SentrySdk::getCurrentHub()->getClient()?->flush();
-            }
+            $this->warn(
+                "[HMI] aktif: JSON tidak valid ({$deviceKey})"
+            );
+
             return;
         }
 
-        Cache::put($key, $data, now()->addHours(12));
-        $this->info('[HMI] aktif: ' . ($data['barang'] ?? '-') . ' / ' . ($data['sisi'] ?? '-'));
-    }
+        Cache::put(
+            $key,
+            $data,
+            now()->addHours(12)
+        );
 
-    /**
-     * Helper khusus untuk mengirim error MQTT ke Sentry secara instan (real-time)
-     */
-    private function laporSentry(Throwable $e, string $errorType, array $contextData = []): void
-    {
-        if (! app()->bound('sentry')) {
-            return;
-        }
-
-        \Sentry\withScope(function (\Sentry\State\Scope $scope) use ($e, $errorType, $contextData) {
-            $scope->setTag('service', 'mqtt-worker');
-            $scope->setTag('mqtt_error_type', $errorType);
-            $scope->setContext('mqtt_detail', $contextData);
-            \Sentry\captureException($e);
-        });
-
-        // Wajib flush() karena worker berjalan terus menerus (long-running process)
-        \Sentry\SentrySdk::getCurrentHub()->getClient()?->flush();
+        $this->info(
+            '[HMI] aktif: '
+                . ($data['barang'] ?? '-')
+                . ' / '
+                . ($data['sisi'] ?? '-')
+        );
     }
 }
