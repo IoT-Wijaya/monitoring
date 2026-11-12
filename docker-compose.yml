@@ -3,8 +3,8 @@
             image: eclipse-mosquitto:2
             container_name: monitoring_mosquitto
             restart: unless-stopped
-            ports:
-                - "1883:1883"
+            # ports:
+                # - "1883:1883"
             volumes:
                 - ./docker/mosquitto/config:/mosquitto/config
                 - ./docker/mosquitto/data:/mosquitto/data
@@ -79,25 +79,26 @@
             image: timberio/vector:0.42.0-alpine
             container_name: monitoring_nginx_sentry
             restart: unless-stopped
+            command: ["--config", "/etc/vector/vector.toml"]
             env_file:
-            - .env
+                - .env
             volumes:
-            - ./docker/vector/vector.toml:/etc/vector/vector.toml:ro
-            - ./docker/nginx/logs:/var/log/nginx:ro
+                - ./docker/vector/vector.toml:/etc/vector/vector.toml:ro
+                - ./docker/nginx/logs:/var/log/nginx:ro
             networks:
-            - laravel
+                - laravel
             depends_on:
-            - nginx
+                - nginx
 
         mysql:
             image: mariadb:latest
             container_name: monitoring_db
             restart: unless-stopped
             environment:
-            MARIADB_DATABASE: ${DB_DATABASE}
-            MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-            MARIADB_USER: ${DB_USERNAME}
-            MARIADB_PASSWORD: ${DB_PASSWORD}
+                MARIADB_DATABASE: ${DB_DATABASE}
+                MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+                MARIADB_USER: ${DB_USERNAME}
+                MARIADB_PASSWORD: ${DB_PASSWORD}
             volumes:
                 - mysql_data:/var/lib/mysql
             networks:
