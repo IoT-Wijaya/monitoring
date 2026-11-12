@@ -68,11 +68,26 @@
                 - ./:/var/www/html
                 - /var/www/firmware:/var/www/firmware
                 - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+                - ./docker/nginx/logs:/var/log/nginx
                 - /etc/letsencrypt:/etc/letsencrypt:ro
             networks:
                 - laravel
             depends_on:
                 - app
+
+        nginx-sentry-shipper:
+            image: timberio/vector:0.42.0-alpine
+            container_name: monitoring_nginx_sentry
+            restart: unless-stopped
+            env_file:
+            - .env
+            volumes:
+            - ./docker/vector/vector.toml:/etc/vector/vector.toml:ro
+            - ./docker/nginx/logs:/var/log/nginx:ro
+            networks:
+            - laravel
+            depends_on:
+            - nginx
 
         mysql:
             image: mariadb:latest

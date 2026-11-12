@@ -1,0 +1,24 @@
+# 1. Baca file error.log milik Nginx secara real-time
+[sources.nginx_errors]
+type = "file"
+include = ["/var/log/nginx/error.log"]
+read_from = "end"
+
+# 2. Rapikan format pesan dan tambahkan tag service = nginx
+[transforms.format_sentry]
+type = "remap"
+inputs = ["nginx_errors"]
+source = '''
+.message = string!(.message)
+.level = "error"
+.environment = get_env_var!("APP_ENV")
+.tags.service = "nginx"
+'''
+
+# 3. Kirim langsung ke Sentry menggunakan DSN dari .env
+[sinks.sentry_out]
+type = "http"
+inputs = ["format_sentry"]
+uri = "${SENTRY_INGEST_URL}"
+encoding.codec = "json"
+request.headers.X-Sentry-Auth = "Sentry sentry_version=7, sentry_key=${SENTRY_PUBLIC_KEY}"

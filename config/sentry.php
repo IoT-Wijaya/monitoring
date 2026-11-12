@@ -81,7 +81,7 @@ return [
 
         // Capture SQL query bindings (parameters) in SQL query breadcrumbs, ignored when `data_collection` is set
         // This option will be migrated to `data_collection.database_query_data` in the next major version
-        'sql_bindings' => env('SENTRY_BREADCRUMBS_SQL_BINDINGS_ENABLED', false),
+        'sql_bindings' => env('SENTRY_BREADCRUMBS_SQL_BINDINGS_ENABLED', true),
 
         // Capture queue job information as breadcrumbs
         'queue_info' => env('SENTRY_BREADCRUMBS_QUEUE_INFO_ENABLED', true),
