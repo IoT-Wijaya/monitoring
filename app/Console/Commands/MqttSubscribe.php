@@ -6,6 +6,7 @@ use App\Models\Machine;
 use App\Services\DeviceHealthService;
 use App\Services\MachineCounterService;
 use App\Services\MqttLoggingService;
+use App\Services\OtaStatusService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use PhpMqtt\Client\Facades\MQTT;
@@ -20,7 +21,8 @@ class MqttSubscribe extends Command
     public function handle(
         MachineCounterService $counter,
         DeviceHealthService $health,
-        MqttLoggingService $logger
+        MqttLoggingService $logger,
+        OtaStatusService $ota
     ): int {
         try {
             $validSlugs = Machine::pluck('slug')->all();
@@ -61,6 +63,7 @@ class MqttSubscribe extends Command
                     $counter,
                     $health,
                     $logger,
+                    $ota,
                     $validSlugs,
                     $perangkatHmi,
                     $jenisHmi
@@ -118,6 +121,23 @@ class MqttSubscribe extends Command
 
                         // Validasi mesin ESP32
                         if (! in_array($slug, $validSlugs, true)) {
+                            return;
+                        }
+
+                        // Perintah OTA dikirim server sendiri ke perangkat; 'pabrik/#' ikut
+                        // menerimanya kembali, dan itu bukan data dari mesin.
+                        if ($jenis === 'ota_perintah') {
+                            return;
+                        }
+
+                        if ($jenis === 'ota_status') {
+                            $this->info(
+                                "[OTA] mesin={$slug} pesan={$message}"
+                                    . ($retained ? ' (retained)' : '')
+                            );
+
+                            $ota->catat($slug, $message);
+
                             return;
                         }
 
