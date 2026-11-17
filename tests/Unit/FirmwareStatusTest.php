@@ -43,10 +43,17 @@ class FirmwareStatusTest extends TestCase
         }
     }
 
-    public function test_build_nol_diperlakukan_sebagai_angka_biasa(): void
+    public function test_build_nol_adalah_firmware_lokal_dan_tidak_ditawari_update(): void
     {
-        $this->assertSame(S::TersediaUpdate, S::tentukan(0, 1));
-        $this->assertSame(S::Terbaru, S::tentukan(0, 0));
+        $this->assertSame(S::TanpaNomorBuild, S::tentukan(0, 61));
+        $this->assertSame(S::TanpaNomorBuild, S::tentukan(0, null));
+        $this->assertSame(false, S::TanpaNomorBuild->bisaUpdate());
+    }
+
+    public function test_build_satu_adalah_batas_terendah_yang_bisa_dibandingkan(): void
+    {
+        $this->assertSame(S::TersediaUpdate, S::tentukan(1, 2));
+        $this->assertSame(S::Terbaru, S::tentukan(1, 1));
     }
 
     public function test_setiap_status_punya_label_tidak_kosong(): void

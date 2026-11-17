@@ -13,6 +13,7 @@ enum FirmwareStatus: string
     case LebihBaruDariRilis = 'lebih_baru_dari_rilis';
     case TanpaRilis = 'tanpa_rilis';
     case TidakDiketahui = 'tidak_diketahui';
+    case TanpaNomorBuild = 'tanpa_nomor_build';
 
     /**
      * @param  int|null  $berjalan  build di mesin, null bila belum pernah melapor
@@ -22,6 +23,11 @@ enum FirmwareStatus: string
     {
         if ($berjalan === null) {
             return self::TidakDiketahui;
+        }
+        // Build 0 = firmware lokal (bukan hasil CI): tidak bisa dibandingkan dan ditolak
+        // OtaCommandBuilder, jadi jangan ditawari update.
+        if ($berjalan < 1) {
+            return self::TanpaNomorBuild;
         }
         if ($tersedia === null) {
             return self::TanpaRilis;
@@ -47,6 +53,7 @@ enum FirmwareStatus: string
             self::LebihBaruDariRilis => 'Lebih baru dari rilis resmi',
             self::TanpaRilis => 'Belum ada rilis resmi',
             self::TidakDiketahui => 'Versi mesin belum diketahui',
+            self::TanpaNomorBuild => 'Firmware lokal tanpa nomor build; pasang rilis resmi lewat kabel dulu',
         };
     }
 }
