@@ -7,6 +7,7 @@ use App\Services\DeviceHealthService;
 use App\Services\MachineCounterService;
 use App\Services\MqttLoggingService;
 use App\Services\OtaStatusService;
+use App\Services\OtaVersionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use PhpMqtt\Client\Facades\MQTT;
@@ -22,7 +23,8 @@ class MqttSubscribe extends Command
         MachineCounterService $counter,
         DeviceHealthService $health,
         MqttLoggingService $logger,
-        OtaStatusService $ota
+        OtaStatusService $ota,
+        OtaVersionService $versiOta
     ): int {
         try {
             $validSlugs = Machine::pluck('slug')->all();
@@ -64,6 +66,7 @@ class MqttSubscribe extends Command
                     $health,
                     $logger,
                     $ota,
+                    $versiOta,
                     $validSlugs,
                     $perangkatHmi,
                     $jenisHmi
