@@ -11,4 +11,7 @@ return [
 
     // Harus sama dengan device_type di manifest dan OTA_DEVICE_TYPE di firmware.
     'device_type' => env('OTA_DEVICE_TYPE', 'sanding-kecil'),
+
+    // Harus sama dengan versi di manifest dan OTA_JENIS_VERSI di firmware.
+    'jenis_versi' => env('OTA_JENIS_VERSI', 'versi'),
 ];

@@ -147,6 +147,10 @@ class MqttSubscribe extends Command
                                 . ($retained ? ' (retained)' : '')
                         );
 
+                        if ($jenis === config('ota.jenis_versi')) {
+                            $versiOta->catat($slug, $message); // tanpa return: alur lama tetap berjalan
+                        }
+
                         $counter->simpanDariMqtt(
                             $slug,
                             $jenis,

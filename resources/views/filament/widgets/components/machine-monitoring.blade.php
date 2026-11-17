@@ -46,18 +46,67 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         </div>
     </div>
 
-    @php $aktif = $aktif ?? null; @endphp
-    @if($isOnline && $aktif)
-    <div class="mb-4 p-3.5 rounded-md border border-emerald-200 dark:border-emerald-900 bg-emerald-50/60 dark:bg-emerald-950/30">
-        <span class="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 uppercase tracking-wider block">Process</span>
-        <span class="text-base font-bold text-zinc-900 dark:text-zinc-100 block">{{ $aktif['barang'] }}</span>
-        <span class="text-xs text-zinc-600 dark:text-zinc-400">
-            Palet {{ $aktif['no_palet'] }} · Sisi {{ $aktif['sisi'] }} · Putaran ke-{{ $aktif['putaran_ke'] }} · Modal {{ number_format($aktif['target']) }}
-        </span>
+    {{-- Bagian Proses (Sanding Berjalan) disembunyikan sesuai permintaan --}}
+
+    @php
+    $warnaFw = match ($statusFirmware) {
+    'terbaru' => 'text-emerald-600 dark:text-emerald-400',
+    'tersedia_update' => 'text-amber-600 dark:text-amber-400',
+    default => 'text-zinc-500 dark:text-zinc-400',
+    };
+
+    $warnaHasil = match ($kategoriOta) {
+    'sukses' => 'text-emerald-600 dark:text-emerald-400',
+    'dikembalikan' => 'text-amber-600 dark:text-amber-400',
+    'gagal' => 'text-red-600 dark:text-red-400',
+    default => 'text-zinc-500 dark:text-zinc-400',
+    };
+
+    $peringatanAktif = ! empty($aktif)
+    ? " Saat ini ada sanding berjalan ({$aktif['barang']}, palet {$aktif['no_palet']}); sebaiknya tunggu hingga selesai."
+    : '';
+    $pesanKonfirmasi = "Pasang {$versiTersedia} pada {$machineNama}? Mesin akan restart dan berhenti menghitung sekitar 1 sampai 3 menit.{$peringatanAktif}";
+    @endphp
+
+    <div class="mb-4 text-xs" wire:click.stop>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span class="font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Firmware</span>
+            <span class="font-mono font-bold text-zinc-900 dark:text-zinc-100">{{ $versiTerpasang ?? '-' }}</span>
+
+            @if($menungguVersi)
+            <span class="font-semibold text-amber-600 dark:text-amber-400">Menunggu mesin memasang {{ $menungguVersi }}…</span>
+            @else
+            <span class="font-semibold {{ $warnaFw }}">{{ $labelFirmware }}@if($statusFirmware === 'tersedia_update' && $versiTersedia) ({{ $versiTersedia }})@endif</span>
+            @endif
+
+            @if($statusFirmware === 'tersedia_update')
+            <span class="sm:ml-auto">
+                <x-filament::button
+                    wire:click="kirimUpdate"
+                    wire:confirm="{{ $pesanKonfirmasi }}"
+                    wire:loading.attr="disabled"
+                    wire:target="kirimUpdate"
+                    color="gray"
+                    size="xs"
+                    icon="heroicon-m-arrow-up-tray"
+                    :disabled="! $bisaUpdate"
+                    class="h-8 px-3 text-xs font-medium bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200">
+                    Update ke {{ $versiTersedia }}
+                </x-filament::button>
+            </span>
+            @endif
+        </div>
+
+        @if($statusFirmware === 'tersedia_update' && ! $bisaUpdate && ! $menungguVersi)
+        <p class="mt-1 text-[11px] text-zinc-400 dark:text-zinc-500">Tombol nonaktif: mesin sedang offline.</p>
+        @endif
+
+        @if($hasilOta)
+        <p class="mt-1 text-[11px] {{ $warnaHasil }}">
+            Update terakhir: {{ $hasilOta }}@if($waktuOta) · {{ $waktuOta }}@endif
+        </p>
+        @endif
     </div>
-    @elseif($isOnline)
-    <div class="mb-4 text-xs text-zinc-500 dark:text-zinc-400">Tidak ada sanding berjalan</div>
-    @endif
 
     <!-- Sensor Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 items-stretch">
@@ -91,7 +140,7 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         <x-filament::button wire:click="resetCounter('sensor1')" wire:confirm="Yakin ingin mereset {{ $labelSensor1 }} ke 0?" color="gray" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800" :disabled="! $isOnline">
             Reset {{ $labelSensor1 }}
         </x-filament::button>
-        <x-filament::button wire:button wire:click="resetCounter('sensor2')" wire:confirm="Yakin ingin mereset {{ $labelSensor2 }} ke 0?" color="gray" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800" :disabled="! $isOnline">
+        <x-filament::button wire:click="resetCounter('sensor2')" wire:confirm="Yakin ingin mereset {{ $labelSensor2 }} ke 0?" color="gray" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800" :disabled="! $isOnline">
             Reset {{ $labelSensor2 }}
         </x-filament::button>
         <x-filament::button wire:click="resetCounter('all')" wire:confirm="Yakin ingin mereset KEDUANYA ke 0?" color="gray" size="xs" icon="heroicon-m-arrow-path" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200" :disabled="! $isOnline">
