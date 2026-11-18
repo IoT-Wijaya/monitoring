@@ -137,10 +137,10 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
 
     <!-- Tombol Reset -->
     <div class="mb-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end" wire:click.stop>
-        <x-filament::button wire:click="resetCounter('sensor1')" wire:confirm="Yakin ingin mereset {{ $labelSensor1 }} ke 0?" color="gray" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800" :disabled="! $isOnline">
+        <x-filament::button wire:click="resetCounter('sensor1')" wire:confirm="Yakin ingin mereset {{ $labelSensor1 }} ke 0?" color="gray" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700" :disabled="! $isOnline">
             Reset {{ $labelSensor1 }}
         </x-filament::button>
-        <x-filament::button wire:click="resetCounter('sensor2')" wire:confirm="Yakin ingin mereset {{ $labelSensor2 }} ke 0?" color="gray" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800" :disabled="! $isOnline">
+        <x-filament::button wire:click="resetCounter('sensor2')" wire:confirm="Yakin ingin mereset {{ $labelSensor2 }} ke 0?" color="gray" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700" :disabled="! $isOnline">
             Reset {{ $labelSensor2 }}
         </x-filament::button>
         <x-filament::button wire:click="resetCounter('all')" wire:confirm="Yakin ingin mereset KEDUANYA ke 0?" color="gray" size="xs" icon="heroicon-m-arrow-path" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-md shadow-2xs transition-colors bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200" :disabled="! $isOnline">
