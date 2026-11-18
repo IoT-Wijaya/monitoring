@@ -20,7 +20,15 @@ default => 'TIDAK ADA KABAR',
 $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakhirTerlihat) : null;
 @endphp
 
-<div wire:click="navigateToRekap" class="p-4 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs transition-all duration-200 relative overflow-hidden cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 group mb-6">
+<!-- 1. TAMBAHKAN x-data DI SINI UNTUK MENGONTROL MODAL -->
+<div wire:click="navigateToRekap"
+    x-data="{ 
+         showModal: false, 
+         modalTitle: '', 
+         modalMessage: '', 
+         confirmAction: '' 
+     }"
+    class="p-4 sm:p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs transition-all duration-200 relative overflow-hidden cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 group mb-6">
 
     <!-- Header Mesin & Jaringan -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-zinc-100 dark:border-zinc-800/80 mb-4">
@@ -46,8 +54,6 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         </div>
     </div>
 
-    {{-- Bagian Proses (Sanding Berjalan) disembunyikan sesuai permintaan --}}
-
     @php
     $warnaFw = match ($statusFirmware) {
     'terbaru' => 'text-emerald-600 dark:text-emerald-400',
@@ -65,10 +71,10 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
     $peringatanAktif = ! empty($aktif)
     ? " Saat ini ada sanding berjalan ({$aktif['barang']}, palet {$aktif['no_palet']}); sebaiknya tunggu hingga selesai."
     : '';
-    $pesanKonfirmasi = "Pasang {$versiTersedia} pada {$machineNama}? Mesin akan restart dan berhenti menghitung sekitar 1 sampai 3 menit.{$peringatanAktif}";
+    $pesanKonfirmasiFw = "Pasang {$versiTersedia} pada {$machineNama}? Mesin akan restart dan berhenti menghitung sekitar 1 sampai 3 menit.{$peringatanAktif}";
     @endphp
 
-    <!-- Bagian Firmware yang Diperbarui (Lebih Cantik & Bersih) -->
+    <!-- Bagian Firmware -->
     <div class="mb-4 p-3.5 rounded-xl bg-zinc-50/60 dark:bg-zinc-800/20 border border-zinc-200/70 dark:border-zinc-800 text-xs" wire:click.stop>
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -91,17 +97,16 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
 
             @if($statusFirmware === 'tersedia_update')
             <div>
-                <x-filament::button
-                    wire:click="kirimUpdate"
-                    wire:confirm="{{ $pesanKonfirmasi }}"
-                    wire:loading.attr="disabled"
-                    wire:target="kirimUpdate"
-                    size="xs"
-                    icon="heroicon-m-arrow-up-tray"
-                    :disabled="! $bisaUpdate"
-                    class="h-8 px-3 text-xs font-semibold rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-2xs">
+                <!-- 2. TOMBOL UPDATE MEMICU MODAL ALPINE (Tanpa wire:confirm) -->
+                <button type="button"
+                    @click="showModal = true; modalTitle = 'Konfirmasi Update Firmware'; modalMessage = '{{ addslashes($pesanKonfirmasiFw) }}'; confirmAction = 'kirimUpdate'"
+                    @disabled(! $bisaUpdate)
+                    class="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+                    </svg>
                     Update ke {{ $versiTersedia }}
-                </x-filament::button>
+                </button>
             </div>
             @endif
         </div>
@@ -144,17 +149,31 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         </div>
     </div>
 
-    <!-- Tombol Reset (Tanpa color="gray" agar warna background & teks solid di light/dark mode) -->
+    <!-- Tombol Reset (Memicu Modal Alpine) -->
     <div class="mb-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end" wire:click.stop>
-        <x-filament::button wire:click="resetCounter('sensor1')" wire:confirm="Yakin ingin mereset {{ $labelSensor1 }} ke 0?" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700" :disabled="! $isOnline">
+        <button type="button"
+            @click="showModal = true; modalTitle = 'Konfirmasi Reset'; modalMessage = 'Yakin ingin mereset {{ $labelSensor1 }} ke 0?'; confirmAction = 'resetCounter(\'sensor1\')'"
+            @disabled(! $isOnline)
+            class="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed">
             Reset {{ $labelSensor1 }}
-        </x-filament::button>
-        <x-filament::button wire:click="resetCounter('sensor2')" wire:confirm="Yakin ingin mereset {{ $labelSensor2 }} ke 0?" size="xs" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700" :disabled="! $isOnline">
+        </button>
+
+        <button type="button"
+            @click="showModal = true; modalTitle = 'Konfirmasi Reset'; modalMessage = 'Yakin ingin mereset {{ $labelSensor2 }} ke 0?'; confirmAction = 'resetCounter(\'sensor2\')'"
+            @disabled(! $isOnline)
+            class="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed">
             Reset {{ $labelSensor2 }}
-        </x-filament::button>
-        <x-filament::button wire:click="resetCounter('all')" wire:confirm="Yakin ingin mereset KEDUANYA ke 0?" size="xs" icon="heroicon-m-arrow-path" class="w-full sm:w-auto justify-center h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200" :disabled="! $isOnline">
+        </button>
+
+        <button type="button"
+            @click="showModal = true; modalTitle = 'Konfirmasi Reset Semua'; modalMessage = 'Yakin ingin mereset KEDUANYA ke 0?'; confirmAction = 'resetCounter(\'all\')'"
+            @disabled(! $isOnline)
+            class="inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
             Reset Semua
-        </x-filament::button>
+        </button>
     </div>
 
     <!-- Footer Status -->
@@ -176,6 +195,34 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
             <svg class="w-4 h-4 transform group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
+        </div>
+    </div>
+
+    <!-- 3. STRUKTUR POP-UP MODAL GAYA SHADCN UI (Berada di dalam x-data) -->
+    <div x-show="showModal"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 scale-95"
+        x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 scale-100"
+        x-transition:leave-end="opacity-0 scale-95"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs"
+        style="display: none;">
+
+        <div @click.away="showModal = false" class="w-full max-w-md p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl" wire:click.stop>
+            <h3 class="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2" x-text="modalTitle"></h3>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed" x-text="modalMessage"></p>
+
+            <div class="flex items-center justify-end gap-2.5">
+                <button type="button" @click="showModal = false" class="px-3.5 py-2 text-xs font-medium rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">
+                    Batal
+                </button>
+                <button type="button"
+                    @click="showModal = false; eval('$wire.' + confirmAction)"
+                    class="px-4 py-2 text-xs font-semibold rounded-lg bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors">
+                    Ya, Lanjutkan
+                </button>
+            </div>
         </div>
     </div>
 </div>
