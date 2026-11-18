@@ -20,7 +20,6 @@ default => 'TIDAK ADA KABAR',
 $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakhirTerlihat) : null;
 @endphp
 
-<!-- 1. TAMBAHKAN x-data DI SINI UNTUK MENGONTROL MODAL -->
 <div wire:click="navigateToRekap"
     x-data="{ 
          showModal: false, 
@@ -97,9 +96,8 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
 
             @if($statusFirmware === 'tersedia_update')
             <div>
-                <!-- 2. TOMBOL UPDATE MEMICU MODAL ALPINE (Tanpa wire:confirm) -->
                 <button type="button"
-                    @click="showModal = true; modalTitle = 'Konfirmasi Update Firmware'; modalMessage = '{{ addslashes($pesanKonfirmasiFw) }}'; confirmAction = 'kirimUpdate'"
+                    @click.stop="showModal = true; modalTitle = 'Konfirmasi Update Firmware'; modalMessage = '{{ addslashes($pesanKonfirmasiFw) }}'; confirmAction = 'kirimUpdate'"
                     @disabled(! $bisaUpdate)
                     class="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,24 +147,24 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         </div>
     </div>
 
-    <!-- Tombol Reset (Memicu Modal Alpine) -->
+    <!-- Tombol Reset -->
     <div class="mb-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end" wire:click.stop>
         <button type="button"
-            @click="showModal = true; modalTitle = 'Konfirmasi Reset'; modalMessage = 'Yakin ingin mereset {{ $labelSensor1 }} ke 0?'; confirmAction = 'resetCounter(\'sensor1\')'"
+            @click.stop="showModal = true; modalTitle = 'Konfirmasi Reset'; modalMessage = 'Yakin ingin mereset {{ $labelSensor1 }} ke 0?'; confirmAction = 'resetCounter(\'sensor1\')'"
             @disabled(! $isOnline)
             class="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed">
             Reset {{ $labelSensor1 }}
         </button>
 
         <button type="button"
-            @click="showModal = true; modalTitle = 'Konfirmasi Reset'; modalMessage = 'Yakin ingin mereset {{ $labelSensor2 }} ke 0?'; confirmAction = 'resetCounter(\'sensor2\')'"
+            @click.stop="showModal = true; modalTitle = 'Konfirmasi Reset'; modalMessage = 'Yakin ingin mereset {{ $labelSensor2 }} ke 0?'; confirmAction = 'resetCounter(\'sensor2\')'"
             @disabled(! $isOnline)
             class="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed">
             Reset {{ $labelSensor2 }}
         </button>
 
         <button type="button"
-            @click="showModal = true; modalTitle = 'Konfirmasi Reset Semua'; modalMessage = 'Yakin ingin mereset KEDUANYA ke 0?'; confirmAction = 'resetCounter(\'all\')'"
+            @click.stop="showModal = true; modalTitle = 'Konfirmasi Reset Semua'; modalMessage = 'Yakin ingin mereset KEDUANYA ke 0?'; confirmAction = 'resetCounter(\'all\')'"
             @disabled(! $isOnline)
             class="inline-flex items-center justify-center gap-1.5 h-8 px-3 text-xs font-medium rounded-lg shadow-2xs transition-colors bg-zinc-950 dark:bg-zinc-50 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,7 +196,7 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         </div>
     </div>
 
-    <!-- 3. STRUKTUR POP-UP MODAL GAYA SHADCN UI (Berada di dalam x-data) -->
+    <!-- STRUKTUR POP-UP MODAL (Ditambahkan @click.stop agar klik di area modal tidak memicu card) -->
     <div x-show="showModal"
         x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="opacity-0 scale-95"
@@ -206,10 +204,11 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         x-transition:leave="transition ease-in duration-150"
         x-transition:leave-start="opacity-100 scale-100"
         x-transition:leave-end="opacity-0 scale-95"
+        @click.stop
         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs"
         style="display: none;">
 
-        <div @click.away="showModal = false" class="w-full max-w-md p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl" wire:click.stop>
+        <div @click.away="showModal = false" class="w-full max-w-md p-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl">
             <h3 class="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-2" x-text="modalTitle"></h3>
             <p class="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed" x-text="modalMessage"></p>
 
