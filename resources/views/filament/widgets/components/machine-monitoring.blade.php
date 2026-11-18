@@ -97,8 +97,10 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
             @if($statusFirmware === 'tersedia_update')
             <div>
                 <button type="button"
-                    @click.stop="showModal = true; modalTitle = 'Konfirmasi Update Firmware'; modalMessage = '{{ addslashes($pesanKonfirmasiFw) }}'; confirmAction = 'kirimUpdate'"
+                    @click.stop="showModal = true; modalTitle = 'Konfirmasi Update Firmware'; modalMessage = @js($pesanKonfirmasiFw); confirmAction = 'kirimUpdate()'"
                     @disabled(! $bisaUpdate)
+                    wire:loading.attr="disabled"
+                    wire:target="kirimUpdate"
                     class="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
@@ -109,8 +111,8 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
             @endif
         </div>
 
-        @if($statusFirmware === 'tersedia_update' && ! $bisaUpdate && ! $menungguVersi)
-        <p class="mt-2 text-[11px] text-zinc-400 dark:text-zinc-500 font-medium">Tombol nonaktif: mesin sedang offline.</p>
+        @if($alasanUpdate && ! $menungguVersi)
+        <p class="mt-2 text-[11px] text-amber-600 dark:text-amber-400 font-medium">Update tidak bisa dilakukan: {{ $alasanUpdate }}</p>
         @endif
 
         @if($hasilOta)

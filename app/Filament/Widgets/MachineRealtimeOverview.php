@@ -9,6 +9,8 @@ use App\Services\MachineEventService;
 use App\Services\OtaCommandService;
 use App\Services\OtaVersionService;
 use App\Support\Ota\FirmwareStatus;
+use App\Support\Ota\OtaCommandBuilder;
+use App\Support\Ota\OtaCommandRefused;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -74,6 +76,8 @@ abstract class MachineRealtimeOverview extends Widget
     #[Locked]
     public ?string $menungguVersi = null;
     #[Locked]
+    public ?string $alasanUpdate = null; // kenapa update tidak bisa dilakukan sekarang
+    #[Locked]
     public ?string $hasilOta = null;
     #[Locked]
     public string $kategoriOta = '';
@@ -125,7 +129,7 @@ abstract class MachineRealtimeOverview extends Widget
     {
         $slug = static::$machineSlug;
         $terpasang = app(OtaVersionService::class)->ambil($slug);
-        $rilis = app(OtaCommandService::class)->rilisTerbaru();
+        $rilis = app(OtaCommandService::class)->rilisTerbaru($alasanRilis);
         $status = FirmwareStatus::tentukan($terpasang?->build, $rilis?->build);
 
         $this->versiTerpasang = $terpasang?->version;
@@ -156,9 +160,52 @@ abstract class MachineRealtimeOverview extends Widget
             && $this->statusMesin === 'ONLINE'
             && $this->menungguVersi === null;
 
+        $this->alasanUpdate = $this->tentukanAlasanUpdate($status, $terpasang, $rilis, $alasanRilis);
+        if ($this->alasanUpdate !== null) {
+            $this->bisaUpdate = false;
+        }
+
         $this->hasilOta = $laporan?->result->label();
         $this->kategoriOta = $laporan?->result->kategori() ?? '';
         $this->waktuOta = $laporan?->reported_at?->locale('id')->diffForHumans();
+    }
+
+    /**
+     * Alasan update tidak bisa dilakukan sekarang, atau null bila boleh atau tidak relevan.
+     * Memakai aturan yang sama dengan perintah sungguhan (OtaCommandBuilder), jadi tombol
+     * tidak aktif untuk sesuatu yang pasti ditolak.
+     */
+    private function tentukanAlasanUpdate(
+        FirmwareStatus $status,
+        ?\App\Support\Ota\FirmwareVersion $terpasang,
+        ?\App\Support\Ota\OtaRelease $rilis,
+        ?string $alasanRilis
+    ): ?string {
+        if ($status === FirmwareStatus::TanpaRilis) {
+            return $alasanRilis ?? 'Belum ada rilis resmi.';
+        }
+        if ($status !== FirmwareStatus::TersediaUpdate || $terpasang === null || $rilis === null) {
+            return null; // Terbaru, Tidak diketahui, dan sejenisnya sudah dijelaskan oleh label status
+        }
+        if ($this->menungguVersi !== null) {
+            return 'Perintah update sebelumnya masih ditunggu.';
+        }
+        if ($this->statusMesin !== 'ONLINE') {
+            return 'Mesin sedang offline; perintah tidak bisa dikirim.';
+        }
+
+        try {
+            OtaCommandBuilder::build(
+                static::$machineSlug,
+                (string) config('ota.device_type'),
+                $terpasang->build,
+                $rilis
+            );
+        } catch (OtaCommandRefused $e) {
+            return $e->getMessage();
+        }
+
+        return null;
     }
 
     /**
@@ -183,8 +230,8 @@ abstract class MachineRealtimeOverview extends Widget
             // Jangan percaya state dari browser: hitung ulang dari server.
             $this->updateData();
 
-            if ($this->statusMesin !== 'ONLINE') {
-                throw new \RuntimeException('Mesin sedang offline, perintah tidak dikirim.');
+            if (! $this->bisaUpdate) {
+                throw new \RuntimeException($this->alasanUpdate ?? 'Update tidak tersedia saat ini.');
             }
 
             $mesin = Machine::firstWhere('slug', static::$machineSlug)
@@ -222,7 +269,9 @@ abstract class MachineRealtimeOverview extends Widget
             Notification::make()->title('Update Tidak Dikirim')->danger()->body($e->getMessage())->send();
         } catch (\Throwable $e) {
             report($e);
-            Notification::make()->title('Gagal Mengirim Perintah Update')->danger()->send();
+            Notification::make()->title('Gagal Mengirim Perintah Update')->danger()
+                ->body('Penyebab: ' . class_basename($e) . '. Rincian ada di storage/logs/laravel.log.')
+                ->send();
         }
     }
 
