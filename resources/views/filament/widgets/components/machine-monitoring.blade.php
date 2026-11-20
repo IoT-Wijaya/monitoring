@@ -21,6 +21,7 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
 @endphp
 
 <div wire:click="navigateToRekap"
+    wire:poll.2s="updateData"
     x-data="{ 
          showModal: false, 
          modalTitle: '', 
@@ -78,12 +79,10 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                 <span class="font-bold uppercase tracking-wider text-zinc-400 text-[10px]">Firmware</span>
-                <span class="font-mono font-bold px-2 py-0.5 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200/60 dark:border-zinc-700 text-[11px] shadow-2xs">{{ $versiTerpasang ?? '-' }}</span>
+                <span class="font-mono font-bold px-2 py-0.5 rounded bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200/60 dark:border-zinc-700 text-[11px] shadow-2xs break-all">{{ $versiTerpasang ?? '-' }}</span>
 
                 @if($menungguVersi)
-                <span class="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span> Menunggu mesin memasang {{ $menungguVersi }}…
-                </span>
+                <span class="font-semibold text-amber-600 dark:text-amber-400">Update ke {{ $menungguVersi }} sedang berjalan</span>
                 @else
                 <span class="font-semibold {{ $warnaFw }} flex items-center gap-1.5">
                     @if($statusFirmware === 'tersedia_update')
@@ -115,7 +114,109 @@ $waktuTerlihat = $terakhirTerlihat ? \Carbon\Carbon::createFromTimestamp($terakh
         <p class="mt-2 text-[11px] text-amber-600 dark:text-amber-400 font-medium">Update tidak bisa dilakukan: {{ $alasanUpdate }}</p>
         @endif
 
-        @if($hasilOta)
+        {{-- Panel progress update (gaya kartu notifikasi shadcn): tahap, bar, stepper, dan hasil --}}
+        @if(! empty($putaran['aktif']))
+        @php
+        $nada = $putaran['nada'];
+        $selesaiPutaran = $putaran['selesai'];
+        $langkahKini = $putaran['langkah'];
+
+        $kotak = match ($nada) {
+        'sukses' => 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30',
+        'peringatan' => 'border-amber-200 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/30',
+        'galat' => 'border-red-200 dark:border-red-900/60 bg-red-50/60 dark:bg-red-950/30',
+        default => 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900',
+        };
+        $warnaJudulPutaran = match ($nada) {
+        'sukses' => 'text-emerald-700 dark:text-emerald-400',
+        'peringatan' => 'text-amber-700 dark:text-amber-400',
+        'galat' => 'text-red-700 dark:text-red-400',
+        default => 'text-zinc-900 dark:text-zinc-100',
+        };
+        $warnaBar = match ($nada) {
+        'sukses' => 'bg-emerald-500',
+        'peringatan' => 'bg-amber-500',
+        'galat' => 'bg-red-500',
+        default => 'bg-zinc-900 dark:bg-zinc-100',
+        };
+        $warnaTitik = match ($nada) {
+        'sukses' => 'bg-emerald-500 border-emerald-500 text-white',
+        'peringatan' => 'bg-amber-500 border-amber-500 text-white',
+        'galat' => 'bg-red-500 border-red-500 text-white',
+        default => 'bg-zinc-900 dark:bg-zinc-100 border-zinc-900 dark:border-zinc-100 text-white dark:text-zinc-900',
+        };
+        @endphp
+
+        <div class="mt-3 rounded-lg border p-3 {{ $kotak }}" role="status" aria-live="polite">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-xs font-semibold {{ $warnaJudulPutaran }}">{{ $putaran['judul'] }}</p>
+                    <p class="mt-0.5 text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">{{ $putaran['keterangan'] }}</p>
+                </div>
+                <span class="shrink-0 font-mono text-[11px] font-bold {{ $warnaJudulPutaran }}">{{ $putaran['persen'] }}%</span>
+            </div>
+
+            <!-- Bar kemajuan -->
+            <div class="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200/70 dark:bg-zinc-800"
+                role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $putaran['persen'] }}">
+                <div class="h-full rounded-full transition-all duration-500 {{ $warnaBar }} @if(! $selesaiPutaran) animate-pulse @endif"
+                    style="width: {{ $putaran['persen'] }}%"></div>
+            </div>
+
+            <!-- Langkah -->
+            <ol class="mt-3 flex items-start justify-between gap-1">
+                @foreach(\App\Support\Ota\OtaFase::LANGKAH as $i => $namaLangkah)
+                @php
+                $lalu = $i < $langkahKini && ($nada !=='galat' || $i===0);
+                    $kini=$i===$langkahKini;
+                    $akhirDiSini=$kini && $selesaiPutaran;
+                    @endphp
+                    <li class="flex flex-1 flex-col items-center gap-1 text-center">
+                    @if($lalu)
+                    <span class="flex w-5 h-5 items-center justify-center rounded-full border bg-emerald-500 border-emerald-500 text-white">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </span>
+                    @elseif($akhirDiSini)
+                    <span class="flex w-5 h-5 items-center justify-center rounded-full border {{ $warnaTitik }}">
+                        @if($nada === 'sukses')
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        @elseif($nada === 'galat')
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        @else
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 9v2m0 4h.01"></path>
+                        </svg>
+                        @endif
+                    </span>
+                    @elseif($kini)
+                    <span class="flex w-5 h-5 items-center justify-center rounded-full border {{ $warnaTitik }}">
+                        <span class="w-1.5 h-1.5 rounded-full bg-white dark:bg-zinc-900 animate-pulse"></span>
+                    </span>
+                    @else
+                    <span class="flex w-5 h-5 items-center justify-center rounded-full border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900"></span>
+                    @endif
+                    <span class="text-[10px] leading-tight {{ ($lalu || $kini) ? 'font-semibold text-zinc-700 dark:text-zinc-300' : 'text-zinc-400 dark:text-zinc-500' }}">{{ $namaLangkah }}</span>
+                    </li>
+                    @endforeach
+            </ol>
+
+            <div class="mt-3 flex items-center justify-between gap-3">
+                <span class="min-w-0 truncate text-[10px] text-zinc-400 dark:text-zinc-500">Tujuan {{ $putaran['versi'] }} · dikirim {{ $putaran['dikirim'] }}</span>
+                @if($selesaiPutaran)
+                <button type="button" wire:click="tutupPutaran"
+                    class="shrink-0 inline-flex items-center h-7 px-2.5 text-[11px] font-medium rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors">
+                    Tutup
+                </button>
+                @endif
+            </div>
+        </div>
+        @elseif($hasilOta)
         <p class="mt-2 text-[11px] {{ $warnaHasil }} font-medium flex items-center gap-1">
             <span>Update terakhir: {{ $hasilOta }}@if($waktuOta) · {{ $waktuOta }}@endif</span>
         </p>

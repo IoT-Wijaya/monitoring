@@ -11,6 +11,7 @@ use App\Services\OtaVersionService;
 use App\Support\Ota\FirmwareStatus;
 use App\Support\Ota\OtaCommandBuilder;
 use App\Support\Ota\OtaCommandRefused;
+use App\Support\Ota\OtaProgress;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -36,8 +37,8 @@ abstract class MachineRealtimeOverview extends Widget
     protected static string $judulSensor2 = 'Modal';   // Sensor 2
     protected static string $satuanHitung = 'pcs';
 
-    // Lama (detik) perintah update ditunggu sebelum dianggap kedaluwarsa.
-    private const MENUNGGU_DETIK = 900;
+    // Catatan putaran update terakhir disimpan 24 jam (atau sampai ditutup/diganti).
+    private const SIMPAN_PUTARAN_DETIK = 86400;
 
     // ---- State yang dipakai Blade ----
     public string $machineNama = '-';
@@ -74,7 +75,9 @@ abstract class MachineRealtimeOverview extends Widget
     #[Locked]
     public bool $bisaUpdate = false;
     #[Locked]
-    public ?string $menungguVersi = null;
+    public ?string $menungguVersi = null; // versi tujuan selama putaran update belum selesai
+    #[Locked]
+    public array $putaran = []; // tahap putaran update terakhir, untuk panel progress
     #[Locked]
     public ?string $alasanUpdate = null; // kenapa update tidak bisa dilakukan sekarang
     #[Locked]
@@ -120,9 +123,9 @@ abstract class MachineRealtimeOverview extends Widget
         $this->muatStatusFirmware();
     }
 
-    private function kunciMenunggu(): string
+    private function kunciPutaran(): string
     {
-        return 'ota:menunggu:' . static::$machineSlug;
+        return 'ota:putaran:' . static::$machineSlug;
     }
 
     private function muatStatusFirmware(): void
@@ -140,21 +143,7 @@ abstract class MachineRealtimeOverview extends Widget
         $mesin = Machine::firstWhere('slug', $slug);
         $laporan = $mesin ? MachineOtaStatus::where('machine_id', $mesin->id)->first() : null;
 
-        // Penantian berakhir bila: mesin sudah melapor build target, ada laporan hasil yang
-        // lebih baru dari perintah (berhasil, dikembalikan, atau gagal), atau kedaluwarsa.
-        $menunggu = Cache::get($this->kunciMenunggu());
-        if (
-            is_array($menunggu)
-            && (
-                ($terpasang !== null && $terpasang->build >= $menunggu['build'])
-                || ($laporan?->reported_at?->timestamp ?? 0) > $menunggu['at']
-                || time() - $menunggu['at'] > self::MENUNGGU_DETIK
-            )
-        ) {
-            Cache::forget($this->kunciMenunggu());
-            $menunggu = null;
-        }
-        $this->menungguVersi = is_array($menunggu) ? $menunggu['versi'] : null;
+        $this->muatPutaran($terpasang, $laporan);
 
         $this->bisaUpdate = $status->bisaUpdate()
             && $this->statusMesin === 'ONLINE'
@@ -168,6 +157,53 @@ abstract class MachineRealtimeOverview extends Widget
         $this->hasilOta = $laporan?->result->label();
         $this->kategoriOta = $laporan?->result->kategori() ?? '';
         $this->waktuOta = $laporan?->reported_at?->locale('id')->diffForHumans();
+    }
+
+    /**
+     * Membaca catatan putaran update terakhir dan menentukan tahapnya (lihat OtaProgress).
+     * Mencatat sekali bila mesin terlihat offline, karena itu tanda ia sedang memasang firmware.
+     */
+    private function muatPutaran(?\App\Support\Ota\FirmwareVersion $terpasang, ?MachineOtaStatus $laporan): void
+    {
+        $this->putaran = [];
+        $this->menungguVersi = null;
+
+        $catatan = Cache::get($this->kunciPutaran());
+        if (! is_array($catatan) || ! isset($catatan['build'], $catatan['at'], $catatan['versi'])) {
+            return;
+        }
+
+        $online = $this->statusMesin === 'ONLINE';
+        if (! $online && empty($catatan['offline'])) {
+            $catatan['offline'] = true;
+            Cache::put($this->kunciPutaran(), $catatan, self::SIMPAN_PUTARAN_DETIK);
+        }
+
+        $fase = OtaProgress::tentukan(
+            (int) $catatan['build'],
+            (int) $catatan['at'],
+            time(),
+            ! empty($catatan['offline']),
+            $online,
+            $terpasang?->build,
+            $laporan?->result,
+            $laporan?->target_build,
+            $laporan?->reported_at?->timestamp
+        );
+
+        $this->putaran = [
+            'aktif' => true,
+            'versi' => (string) $catatan['versi'],
+            'fase' => $fase->value,
+            'judul' => $fase->judul(),
+            'keterangan' => $fase->keterangan(),
+            'persen' => $fase->persen(),
+            'nada' => $fase->nada(),
+            'langkah' => $fase->langkahAktif(),
+            'selesai' => $fase->selesai(),
+            'dikirim' => Carbon::createFromTimestamp((int) $catatan['at'])->locale('id')->diffForHumans(),
+        ];
+        $this->menungguVersi = $fase->selesai() ? null : (string) $catatan['versi'];
     }
 
     /**
@@ -226,7 +262,14 @@ abstract class MachineRealtimeOverview extends Widget
             return;
         }
 
+        // Kunci singkat: klik ganda atau dua operator tidak bisa mengirim dua perintah bersamaan.
+        $kunci = Cache::lock('ota:kirim:' . static::$machineSlug, 15);
+
         try {
+            if (! $kunci->get()) {
+                throw new \RuntimeException('Perintah update sedang diproses.');
+            }
+
             // Jangan percaya state dari browser: hitung ulang dari server.
             $this->updateData();
 
@@ -244,25 +287,17 @@ abstract class MachineRealtimeOverview extends Widget
             $rilis = $layanan->rilisTerbaru($alasan)
                 ?? throw new \RuntimeException($alasan ?? 'Belum ada rilis resmi.');
 
-            // Satu perintah tertunda saja: klik ganda atau dua operator ditolak.
-            $dipesan = Cache::add(
-                $this->kunciMenunggu(),
-                ['build' => $rilis->build, 'versi' => $rilis->version, 'at' => time()],
-                self::MENUNGGU_DETIK
-            );
-            if (! $dipesan) {
-                throw new \RuntimeException('Perintah update sebelumnya masih ditunggu.');
-            }
+            $layanan->kirim($mesin, $terpasang->build);
 
-            try {
-                $layanan->kirim($mesin, $terpasang->build);
-            } catch (\Throwable $e) {
-                Cache::forget($this->kunciMenunggu()); // gagal kirim: bebaskan reservasi
-                throw $e;
-            }
+            // Putaran baru dicatat setelah perintah benar-benar terkirim; ini menimpa putaran lama.
+            Cache::put(
+                $this->kunciPutaran(),
+                ['build' => $rilis->build, 'versi' => $rilis->version, 'at' => time(), 'offline' => false],
+                self::SIMPAN_PUTARAN_DETIK
+            );
 
             Notification::make()->title('Perintah Update Terkirim')
-                ->body('Mesin akan restart dan memasang firmware baru.')->success()->send();
+                ->body('Pantau tahapnya di kartu ini. Jangan matikan daya mesin.')->success()->send();
 
             $this->updateData();
         } catch (\RuntimeException $e) { // termasuk OtaCommandRefused
@@ -272,6 +307,23 @@ abstract class MachineRealtimeOverview extends Widget
             Notification::make()->title('Gagal Mengirim Perintah Update')->danger()
                 ->body('Penyebab: ' . class_basename($e) . '. Rincian ada di storage/logs/laravel.log.')
                 ->send();
+        } finally {
+            $kunci->release();
+        }
+    }
+
+    /** Menutup panel hasil update (hanya bila putaran sudah selesai). */
+    public function tutupPutaran(): void
+    {
+        if (! $this->bolehUpdateFirmware()) {
+            return;
+        }
+
+        $this->updateData();
+
+        if (($this->putaran['selesai'] ?? false) === true) {
+            Cache::forget($this->kunciPutaran());
+            $this->updateData();
         }
     }
 
