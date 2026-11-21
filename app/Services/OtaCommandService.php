@@ -7,6 +7,8 @@ use App\Support\Ota\InvalidManifestException;
 use App\Support\Ota\OtaCommand;
 use App\Support\Ota\OtaCommandBuilder;
 use App\Support\Ota\OtaCommandRefused;
+use App\Support\Ota\OtaMesin;
+use App\Support\Ota\OtaMesinRegistry;
 use App\Support\Ota\OtaRelease;
 use App\Support\Ota\SignedManifestReader;
 use PhpMqtt\Client\Facades\MQTT;
@@ -19,12 +21,37 @@ use PhpMqtt\Client\Facades\MQTT;
 class OtaCommandService
 {
     /**
-     * Rilis terbaru yang tersedia, atau null bila belum ada atau manifest tidak sah.
+     * Mesin untuk slug ini, atau null bila belum didaftarkan untuk OTA (config/ota.php).
+     * Sebab dicatat lewat $alasan agar bisa ditampilkan kepada operator.
+     */
+    public function mesin(string $slug, ?string &$alasan = null): ?OtaMesin
+    {
+        try {
+            $mesin = OtaMesinRegistry::dariConfig()->cari($slug);
+        } catch (\UnexpectedValueException $e) {
+            $alasan = 'konfigurasi OTA tidak valid: ' . $e->getMessage();
+
+            return null;
+        }
+        if ($mesin === null) {
+            $alasan = "mesin '{$slug}' belum didaftarkan untuk update OTA";
+        }
+
+        return $mesin;
+    }
+
+    /**
+     * Rilis terbaru untuk mesin ini, atau null bila belum ada atau manifest tidak sah.
      * Sebab penolakan dicatat lewat $alasan agar bisa ditampilkan kepada operator.
      */
-    public function rilisTerbaru(?string &$alasan = null): ?OtaRelease
+    public function rilisTerbaru(string $slug, ?string &$alasan = null): ?OtaRelease
     {
-        $path = (string) config('ota.manifest_path');
+        $mesin = $this->mesin($slug, $alasan);
+        if ($mesin === null) {
+            return null;
+        }
+
+        $path = $mesin->manifestPath;
         $kunciHex = (string) config('ota.public_key_hex');
 
         if ($kunciHex === '' || ! ctype_xdigit($kunciHex) || strlen($kunciHex) !== 64) {
@@ -55,14 +82,15 @@ class OtaCommandService
      */
     public function susun(Machine $machine, int $runningBuild): OtaCommand
     {
-        $rilis = $this->rilisTerbaru($alasan);
+        $slug = (string) $machine->slug;
+        $rilis = $this->rilisTerbaru($slug, $alasan);
         if ($rilis === null) {
             throw new OtaCommandRefused((string) $alasan);
         }
 
         return OtaCommandBuilder::build(
-            (string) $machine->slug,
-            (string) config('ota.device_type'),
+            $slug,
+            $this->mesin($slug)->deviceType, // aman: rilisTerbaru sudah memastikan mesin terdaftar
             $runningBuild,
             $rilis
         );

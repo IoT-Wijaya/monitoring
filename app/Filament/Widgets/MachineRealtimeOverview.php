@@ -132,7 +132,7 @@ abstract class MachineRealtimeOverview extends Widget
     {
         $slug = static::$machineSlug;
         $terpasang = app(OtaVersionService::class)->ambil($slug);
-        $rilis = app(OtaCommandService::class)->rilisTerbaru($alasanRilis);
+        $rilis = app(OtaCommandService::class)->rilisTerbaru($slug, $alasanRilis);
         $status = FirmwareStatus::tentukan($terpasang?->build, $rilis?->build);
 
         $this->versiTerpasang = $terpasang?->version;
@@ -230,10 +230,15 @@ abstract class MachineRealtimeOverview extends Widget
             return 'Mesin sedang offline; perintah tidak bisa dikirim.';
         }
 
+        $deviceType = app(OtaCommandService::class)->mesin(static::$machineSlug)?->deviceType;
+        if ($deviceType === null) {
+            return 'Mesin ini belum didaftarkan untuk update OTA.';
+        }
+
         try {
             OtaCommandBuilder::build(
                 static::$machineSlug,
-                (string) config('ota.device_type'),
+                $deviceType,
                 $terpasang->build,
                 $rilis
             );
@@ -284,7 +289,7 @@ abstract class MachineRealtimeOverview extends Widget
                 ?? throw new \RuntimeException('Versi firmware mesin belum diketahui.');
 
             $layanan = app(OtaCommandService::class);
-            $rilis = $layanan->rilisTerbaru($alasan)
+            $rilis = $layanan->rilisTerbaru(static::$machineSlug, $alasan)
                 ?? throw new \RuntimeException($alasan ?? 'Belum ada rilis resmi.');
 
             $layanan->kirim($mesin, $terpasang->build);
