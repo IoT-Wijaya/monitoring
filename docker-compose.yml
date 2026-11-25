@@ -1,152 +1,152 @@
-    services:
-        mosquitto:
-            image: eclipse-mosquitto:2
-            container_name: monitoring_mosquitto
-            restart: unless-stopped
-            # ports:
-                # - "1883:1883"
-            volumes:
-                - ./docker/mosquitto/config:/mosquitto/config
-                - ./docker/mosquitto/data:/mosquitto/data
-                - ./docker/mosquitto/log:/mosquitto/log
-            networks:
-                - laravel
+services:
+    mosquitto:
+        image: eclipse-mosquitto:2
+        container_name: monitoring_mosquitto
+        restart: unless-stopped
+        # ports:
+        # - "1883:1883"
+        volumes:
+            - ./docker/mosquitto/config:/mosquitto/config
+            - ./docker/mosquitto/data:/mosquitto/data
+            - ./docker/mosquitto/log:/mosquitto/log
+        networks:
+            - laravel
 
-        app:
-            build:
-                context: ./docker/php
-                dockerfile: Dockerfile
-            image: laravel-custom-app
-            container_name: monitoring_app
-            restart: unless-stopped
-            working_dir: /var/www/html
-            volumes:
-                - ./:/var/www/html
-                - /srv/firmware:/var/www/firmware:ro
-            extra_hosts:
-                - "host.docker.internal:host-gateway"
-            env_file:
-                - .env
-            networks:
-                - laravel
-            depends_on:
-                - mysql
+    app:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        image: laravel-custom-app
+        container_name: monitoring_app
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+            - /srv/firmware:/var/www/firmware:ro
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        env_file:
+            - .env
+        networks:
+            - laravel
+        depends_on:
+            - mysql
 
-        # Worker otomatis untuk MQTT Listener
-        mqtt-worker:
-            build:
-                context: ./docker/php
-                dockerfile: Dockerfile
-            image: laravel-custom-app
-            container_name: monitoring_mqtt_worker
-            restart: unless-stopped
-            working_dir: /var/www/html
-            volumes:
-                - ./:/var/www/html
-            command: php artisan mqtt:subscribe
-            networks:
-                - laravel
-            extra_hosts:
-                - "host.docker.internal:host-gateway"
-            env_file:
-                - .env
-            depends_on:
-                - app
-                - mysql
+    # Worker otomatis untuk MQTT Listener
+    mqtt-worker:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        image: laravel-custom-app
+        container_name: monitoring_mqtt_worker
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+        command: php artisan mqtt:subscribe
+        networks:
+            - laravel
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        env_file:
+            - .env
+        depends_on:
+            - app
+            - mysql
 
-        # Web Server Nginx (Opsional jika ingin langsung mirip produksi)
-        # Atau Anda bisa menggunakan built-in server PHP untuk local: php artisan serve
-        nginx:
-            image: nginx:alpine
-            container_name: monitoring_nginx
-            restart: unless-stopped
-            ports:
-                - "80:80"
-                - "443:443"
-            extra_hosts:
-                - "host.docker.internal:host-gateway"
-            volumes:
-                - ./:/var/www/html
-                - /srv/firmware:/var/www/firmware:ro
-                - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-                - ./docker/nginx/logs:/var/log/nginx
-                - /etc/letsencrypt:/etc/letsencrypt:ro
-            networks:
-                - laravel
-            depends_on:
-                - app
+    # Web Server Nginx (Opsional jika ingin langsung mirip produksi)
+    # Atau Anda bisa menggunakan built-in server PHP untuk local: php artisan serve
+    nginx:
+        image: nginx:alpine
+        container_name: monitoring_nginx
+        restart: unless-stopped
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        volumes:
+            - ./:/var/www/html
+            - /srv/firmware:/var/www/firmware:ro
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+            - ./docker/nginx/logs:/var/log/nginx
+            - /etc/letsencrypt:/etc/letsencrypt:ro
+        networks:
+            - laravel
+            - proxy-net
+        depends_on:
+            - app
 
-        nginx-sentry-shipper:
-            image: timberio/vector:0.42.0-alpine
-            container_name: monitoring_nginx_sentry
-            restart: unless-stopped
-            command: ["--config", "/etc/vector/vector.toml"]
-            env_file:
-                - .env
-            volumes:
-                - ./docker/vector/vector.toml:/etc/vector/vector.toml:ro
-                - ./docker/nginx/logs:/var/log/nginx:ro
-            networks:
-                - laravel
-            depends_on:
-                - nginx
+    nginx-sentry-shipper:
+        image: timberio/vector:0.42.0-alpine
+        container_name: monitoring_nginx_sentry
+        restart: unless-stopped
+        command: ["--config", "/etc/vector/vector.toml"]
+        env_file:
+            - .env
+        volumes:
+            - ./docker/vector/vector.toml:/etc/vector/vector.toml:ro
+            - ./docker/nginx/logs:/var/log/nginx:ro
+        networks:
+            - laravel
+        depends_on:
+            - nginx
 
-        mysql:
-            image: mariadb:latest
-            container_name: monitoring_db
-            restart: unless-stopped
-            environment:
-                MARIADB_DATABASE: ${DB_DATABASE}
-                MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-                MARIADB_USER: ${DB_USERNAME}
-                MARIADB_PASSWORD: ${DB_PASSWORD}
-            volumes:
-                - mysql_data:/var/lib/mysql
-            networks:
-                - laravel
+    mysql:
+        image: mariadb:latest
+        container_name: monitoring_db
+        restart: unless-stopped
+        environment:
+            MARIADB_DATABASE: ${DB_DATABASE}
+            MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+            MARIADB_USER: ${DB_USERNAME}
+            MARIADB_PASSWORD: ${DB_PASSWORD}
+        volumes:
+            - mysql_data:/var/lib/mysql
+        networks:
+            - laravel
 
-        scheduler:
-            build:
-                context: ./docker/php
-                dockerfile: Dockerfile
-            image: laravel-custom-app
-            container_name: monitoring_scheduler
-            restart: unless-stopped
-            working_dir: /var/www/html
-            volumes:
-                - ./:/var/www/html
-            command: php artisan schedule:work
-            networks:
-                - laravel
-            extra_hosts:
-                - "host.docker.internal:host-gateway"
-            env_file:
-                - .env
-            depends_on:
-                - mysql
+    scheduler:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        image: laravel-custom-app
+        container_name: monitoring_scheduler
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+        command: php artisan schedule:work
+        networks:
+            - laravel
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        env_file:
+            - .env
+        depends_on:
+            - mysql
 
-        queue-worker:
-            build:
-                context: ./docker/php
-                dockerfile: Dockerfile
-            image: laravel-custom-app
-            container_name: monitoring_queue
-            restart: unless-stopped
-            working_dir: /var/www/html
-            volumes:
-                - ./:/var/www/html
-            command: php artisan queue:work --sleep=3 --tries=3 --timeout=120 --max-time=3600
-            networks:
-                - laravel
-            extra_hosts:
-                - "host.docker.internal:host-gateway"
-            env_file: 
-                - .env
-            depends_on:
-                - mysql
-    networks:
-        laravel:
-            driver: bridge
+    queue-worker:
+        build:
+            context: ./docker/php
+            dockerfile: Dockerfile
+        image: laravel-custom-app
+        container_name: monitoring_queue
+        restart: unless-stopped
+        working_dir: /var/www/html
+        volumes:
+            - ./:/var/www/html
+        command: php artisan queue:work --sleep=3 --tries=3 --timeout=120 --max-time=3600
+        networks:
+            - laravel
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        env_file:
+            - .env
+        depends_on:
+            - mysql
+networks:
+    laravel:
+        driver: bridge
+    proxy-net:
+        external: true
 
-    volumes:
-        mysql_data:
+volumes:
+    mysql_data:
