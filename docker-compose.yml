@@ -13,10 +13,7 @@ services:
             - laravel
 
     app:
-        build:
-            context: ./docker/php
-            dockerfile: Dockerfile
-        image: laravel-custom-app
+        image: ghcr.io/iot-wijaya/monitoring:latest
         container_name: monitoring_app
         restart: unless-stopped
         working_dir: /var/www/html
@@ -34,10 +31,7 @@ services:
 
     # Worker otomatis untuk MQTT Listener
     mqtt-worker:
-        build:
-            context: ./docker/php
-            dockerfile: Dockerfile
-        image: laravel-custom-app
+        image: ghcr.io/iot-wijaya/monitoring:latest
         container_name: monitoring_mqtt_worker
         restart: unless-stopped
         working_dir: /var/www/html
@@ -78,7 +72,7 @@ services:
         image: timberio/vector:0.42.0-alpine
         container_name: monitoring_nginx_sentry
         restart: unless-stopped
-        command: ["--config", "/etc/vector/vector.toml"]
+        command: [ "--config", "/etc/vector/vector.toml" ]
         env_file:
             - .env
         volumes:
@@ -104,10 +98,7 @@ services:
             - laravel
 
     scheduler:
-        build:
-            context: ./docker/php
-            dockerfile: Dockerfile
-        image: laravel-custom-app
+        image: ghcr.io/iot-wijaya/monitoring:latest
         container_name: monitoring_scheduler
         restart: unless-stopped
         working_dir: /var/www/html
@@ -124,10 +115,7 @@ services:
             - mysql
 
     queue-worker:
-        build:
-            context: ./docker/php
-            dockerfile: Dockerfile
-        image: laravel-custom-app
+        image: ghcr.io/iot-wijaya/monitoring:latest
         container_name: monitoring_queue
         restart: unless-stopped
         working_dir: /var/www/html
@@ -142,6 +130,7 @@ services:
             - .env
         depends_on:
             - mysql
+
 networks:
     laravel:
         driver: bridge
